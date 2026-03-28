@@ -1,0 +1,280 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+
+// WIFI CREDENTIALS
+const char* ssid = "Octat 2.4G";
+const char* password = "Sunshine3030z";
+
+// SUPABASE
+const char* supabaseUrl = "https://aatapixarmkgyyyctbmm.supabase.co/rest/v1/traffic_light";
+const char* supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhdGFwaXhhcm1rZ3l5eWN0Ym1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MTA0MjIsImV4cCI6MjA5MDE4NjQyMn0.r6-kIZEgDO9A2GAGDs1JRXCNVFBPLk1Nut5XPCVxQf8";
+
+// PINS
+const int red = 17;
+const int yellow = 5;
+const int green = 18;
+const int buzzer = 19;
+const int builtInLed = 2;
+
+// Variables
+String currentState = "RED";
+int countdownValue = 30;
+bool systemEnabled = true;
+bool manualMode = false;
+String manualLed = "";
+unsigned long lastCheck = 0;
+unsigned long lastBuzzerTime = 0;
+int lastId = 0;
+String lastDisplayedState = "";
+int lastDisplayedCountdown = -1;
+
+void setup() {
+  Serial.begin(115200);
+  Serial.println("\n=== TRAFFIC LIGHT SYSTEM ===");
+
+  pinMode(red, OUTPUT);
+  pinMode(yellow, OUTPUT);
+  pinMode(green, OUTPUT);
+  pinMode(buzzer, OUTPUT);
+  pinMode(builtInLed, OUTPUT);
+
+  // Turn everything OFF initially
+  digitalWrite(red, LOW);
+  digitalWrite(yellow, LOW);
+  digitalWrite(green, LOW);
+  digitalWrite(buzzer, LOW);
+  digitalWrite(builtInLed, LOW);
+
+  // Quick test
+  digitalWrite(buzzer, HIGH);
+  delay(50);
+  digitalWrite(buzzer, LOW);
+  digitalWrite(builtInLed, HIGH);
+  delay(50);
+  digitalWrite(builtInLed, LOW);
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi");
+
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    delay(500);
+    Serial.print(".");
+    attempts++;
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\n✓ WiFi Connected");
+  } else {
+    Serial.println("\n✗ WiFi Failed");
+  }
+
+  setLights("RED");
+  getLatestState();
+}
+
+void loop() {
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - lastCheck >= 100) {
+    lastCheck = currentMillis;
+    checkForUpdates();
+  }
+
+  handleBuzzer();
+}
+
+void shortBeep() {
+  digitalWrite(buzzer, HIGH);
+  delay(80);
+  digitalWrite(buzzer, LOW);
+}
+
+void handleBuzzer() {
+  unsigned long currentMillis = millis();
+
+  bool shouldBuzz = false;
+
+  // Only buzz in automatic mode during last 3 seconds of red
+  if (systemEnabled && !manualMode && currentState == "RED" && countdownValue <= 3 && countdownValue > 0) {
+    shouldBuzz = true;
+  }
+
+  // Manual buzzer test (exclusive)
+  if (manualMode && manualLed == "BUZZER") {
+    shouldBuzz = true;
+  }
+
+  if (shouldBuzz) {
+    int beepInterval = (countdownValue == 1 && !manualMode) ? 100 : 200;
+    if (currentMillis - lastBuzzerTime >= beepInterval) {
+      lastBuzzerTime = currentMillis;
+      static bool buzzerState = false;
+      buzzerState = !buzzerState;
+      digitalWrite(buzzer, buzzerState ? HIGH : LOW);
+    }
+  } else {
+    digitalWrite(buzzer, LOW);
+  }
+}
+
+void checkForUpdates() {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    String url = String(supabaseUrl) + "?order=id.desc&limit=1";
+    http.begin(url);
+    http.addHeader("apikey", supabaseKey);
+    http.addHeader("Authorization", String("Bearer ") + supabaseKey);
+    http.setTimeout(500);
+
+    int httpResponseCode = http.GET();
+
+    if (httpResponseCode > 0) {
+      String payload = http.getString();
+      StaticJsonDocument<1024> doc;
+      DeserializationError error = deserializeJson(doc, payload);
+
+      if (!error) {
+        JsonArray array = doc.as<JsonArray>();
+        if (array.size() > 0) {
+          JsonObject obj = array[0];
+          int currentId = obj["id"].as<int>();
+
+          if (currentId > lastId) {
+            lastId = currentId;
+
+            String newState = obj["state"].as<String>();
+            int newCountdown = obj["countdown"].as<int>();
+            bool newSystemEnabled = obj["system_enabled"].as<bool>();
+            bool newManualMode = obj["manual_mode"].as<bool>();
+            String newManualLed = obj["manual_led"].as<String>();
+
+            bool stateChanged = (newState != currentState);
+
+            systemEnabled = newSystemEnabled;
+            manualMode = newManualMode;
+            manualLed = newManualLed;
+            currentState = newState;
+            countdownValue = newCountdown;
+
+            // Handle all outputs based on mode
+            if (systemEnabled && !manualMode) {
+              // AUTOMATIC MODE - Follow traffic light sequence
+              digitalWrite(builtInLed, LOW);  // Turn off ESP LED
+              setLights(currentState);
+
+              if (stateChanged) {
+                shortBeep();
+                Serial.print("▶ AUTO: ");
+                Serial.print(currentState);
+                Serial.println(" (BEEP)");
+              } else {
+                Serial.print("  AUTO: ");
+                Serial.print(currentState);
+                Serial.print(" | ");
+                Serial.println(countdownValue);
+              }
+            } else if (manualMode) {
+              // MANUAL MODE - Exclusive control
+              // First, turn EVERYTHING OFF
+              digitalWrite(red, LOW);
+              digitalWrite(yellow, LOW);
+              digitalWrite(green, LOW);
+              digitalWrite(buzzer, LOW);
+              digitalWrite(builtInLed, LOW);
+
+              // Then turn on ONLY the selected function
+              if (manualLed == "RED") {
+                digitalWrite(red, HIGH);
+                Serial.println("🔴 MANUAL: RED LIGHT ONLY");
+              } else if (manualLed == "YELLOW") {
+                digitalWrite(yellow, HIGH);
+                Serial.println("🟡 MANUAL: YELLOW LIGHT ONLY");
+              } else if (manualLed == "GREEN") {
+                digitalWrite(green, HIGH);
+                Serial.println("🟢 MANUAL: GREEN LIGHT ONLY");
+              } else if (manualLed == "BUZZER") {
+                // Buzzer handled in handleBuzzer()
+                Serial.println("🔊 MANUAL: BUZZER TEST");
+              } else if (manualLed == "LED") {
+                digitalWrite(builtInLed, HIGH);
+                Serial.println("💡 MANUAL: ESP32 LED ON");
+              }
+              // If manualLed is empty or unrecognized, all remain OFF
+            } else if (!systemEnabled) {
+              // SYSTEM DISABLED - Everything OFF
+              digitalWrite(red, LOW);
+              digitalWrite(yellow, LOW);
+              digitalWrite(green, LOW);
+              digitalWrite(buzzer, LOW);
+              digitalWrite(builtInLed, LOW);
+              Serial.println("⭕ SYSTEM DISABLED");
+            }
+
+            lastDisplayedState = currentState;
+            lastDisplayedCountdown = countdownValue;
+          }
+        }
+      }
+    }
+    http.end();
+  }
+}
+
+void getLatestState() {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    String url = String(supabaseUrl) + "?order=id.desc&limit=1";
+    http.begin(url);
+    http.addHeader("apikey", supabaseKey);
+    http.addHeader("Authorization", String("Bearer ") + supabaseKey);
+    http.setTimeout(500);
+
+    int httpResponseCode = http.GET();
+
+    if (httpResponseCode > 0) {
+      String payload = http.getString();
+      StaticJsonDocument<1024> doc;
+      DeserializationError error = deserializeJson(doc, payload);
+
+      if (!error) {
+        JsonArray array = doc.as<JsonArray>();
+        if (array.size() > 0) {
+          JsonObject obj = array[0];
+          lastId = obj["id"].as<int>();
+          currentState = obj["state"].as<String>();
+          countdownValue = obj["countdown"].as<int>();
+          systemEnabled = obj["system_enabled"].as<bool>();
+          manualMode = obj["manual_mode"].as<bool>();
+          manualLed = obj["manual_led"].as<String>();
+
+          setLights(currentState);
+          lastDisplayedState = currentState;
+          lastDisplayedCountdown = countdownValue;
+
+          Serial.println("✓ System Ready");
+          Serial.print("  State: ");
+          Serial.println(currentState);
+          Serial.print("  Countdown: ");
+          Serial.println(countdownValue);
+        }
+      }
+    }
+    http.end();
+  }
+}
+
+void setLights(String state) {
+  digitalWrite(red, LOW);
+  digitalWrite(yellow, LOW);
+  digitalWrite(green, LOW);
+
+  if (state == "RED") {
+    digitalWrite(red, HIGH);
+  } else if (state == "YELLOW") {
+    digitalWrite(yellow, HIGH);
+  } else if (state == "GREEN") {
+    digitalWrite(green, HIGH);
+  }
+}
