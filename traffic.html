@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Traffic Light Control — SmartNode</title>
+    <link rel="stylesheet" href="traffic.css" />
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+
+    <!-- TOP BAR -->
+    <nav class="topbar">
+        <div class="topbar-brand">
+            <div class="logo-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#00c8ff" stroke-width="2">
+                    <circle cx="12" cy="6" r="3" />
+                    <circle cx="12" cy="12" r="3" />
+                    <circle cx="12" cy="18" r="3" />
+                    <line x1="12" y1="3" x2="12" y2="21" />
+                </svg>
+            </div>
+            <div>
+                <span>SMARTNODE<span class="sub">TRAFFIC CONTROL</span></span>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <div class="status-pill" id="wifiStatus">
+                <span class="dot"></span><span id="wifiLabel">WIFI — PENDING</span>
+            </div>
+            <div class="status-pill" id="supabaseStatus">
+                <span class="dot"></span><span id="supabaseLabel">SUPABASE — PENDING</span>
+            </div>
+            <a class="btn-home" href="index.html">&#8592; HUB</a>
+        </div>
+    </nav>
+
+    <!-- MAIN GRID -->
+    <div class="main">
+
+        <!-- SUPABASE STATUS BANNER -->
+        <div class="supabase-banner">
+            <span class="sb-label">Connection Status</span>
+            <div class="sb-status-group">
+                <div class="sb-item">
+                    <div class="sb-dot" id="sbDot1"></div>
+                    <span class="sb-val" id="sbVal1">Supabase DB</span>
+                </div>
+                <div class="sb-item">
+                    <div class="sb-dot" id="sbDot2"></div>
+                    <span class="sb-val" id="sbVal2">Realtime Channel</span>
+                </div>
+                <div class="sb-item">
+                    <div class="sb-dot" id="sbDot3"></div>
+                    <span class="sb-val" id="sbVal3">ESP32 Heartbeat</span>
+                </div>
+                <div class="sb-item">
+                    <div class="sb-dot" id="sbDot4"></div>
+                    <span class="sb-val" id="sbVal4">Last sync: --</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── COLUMN 1: TRAFFIC LIGHT VISUAL ── -->
+        <div class="panel tl-panel">
+            <div class="panel-head">
+                <h2>Traffic Signal</h2>
+                <span style="font-size:10px; letter-spacing:2px; color: var(--muted2);" id="tlPowerLabel">ACTIVE</span>
+            </div>
+            <div class="panel-body" style="flex:1; display:flex; flex-direction:column; align-items:center; gap:24px;">
+                <div class="tl-housing">
+                    <div class="tl-bulb red-dim" id="bulb-red" title="Red LED (Pin 25)"></div>
+                    <div class="tl-bulb yellow-dim" id="bulb-yellow" title="Yellow LED (Pin 27)"></div>
+                    <div class="tl-bulb green-dim" id="bulb-green" title="Green LED (Pin 12)"></div>
+                </div>
+
+                <div style="margin-top:60px; width:100%;">
+                    <div
+                        style="font-family: var(--font-display); font-size:9px; letter-spacing:4px; color: var(--muted2); text-transform:uppercase; margin-bottom:10px;">
+                        Pin Map</div>
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <div
+                            style="display:flex; justify-content:space-between; font-size:12px; padding:7px 10px; background:rgba(255,59,48,0.06); border-left:2px solid var(--red);">
+                            <span style="color:var(--muted2);">RED</span>
+                            <span style="font-family:var(--font-mono); color:var(--red);">PIN 25</span>
+                        </div>
+                        <div
+                            style="display:flex; justify-content:space-between; font-size:12px; padding:7px 10px; background:rgba(255,204,0,0.06); border-left:2px solid var(--yellow);">
+                            <span style="color:var(--muted2);">YELLOW</span>
+                            <span style="font-family:var(--font-mono); color:var(--yellow);">PIN 27</span>
+                        </div>
+                        <div
+                            style="display:flex; justify-content:space-between; font-size:12px; padding:7px 10px; background:rgba(48,209,88,0.06); border-left:2px solid var(--green);">
+                            <span style="color:var(--muted2);">GREEN</span>
+                            <span style="font-family:var(--font-mono); color:var(--green);">PIN 12</span>
+                        </div>
+                        <div
+                            style="display:flex; justify-content:space-between; font-size:12px; padding:7px 10px; background:rgba(191,90,242,0.06); border-left:2px solid #bf5af2;">
+                            <span style="color:var(--muted2);">BUILT-IN</span>
+                            <span style="font-family:var(--font-mono); color:#bf5af2;">PIN 2</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── COLUMN 2 ROW 1: COUNTDOWN ── -->
+        <div class="panel countdown-panel">
+            <div class="panel-head">
+                <h2>Countdown Timer</h2>
+                <span id="cdPhaseLabel" style="font-size:11px; letter-spacing:3px; color:var(--muted2);">PHASE:
+                    STOP</span>
+            </div>
+            <div class="panel-body">
+                <div class="countdown-inner">
+                    <div class="cd-label">SECONDS REMAINING</div>
+                    <div class="cd-number state-off" id="cdNumber">--</div>
+                    <div class="cd-state state-off" id="cdState">SYSTEM OFF</div>
+                </div>
+                <div class="cd-bar-wrap">
+                    <div class="cd-bar state-off" id="cdBar" style="width:100%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── COLUMN 2 ROW 2: CONTROLS ── -->
+        <div class="panel controls-panel">
+            <div class="panel-head">
+                <h2>Control Panel</h2>
+                <span style="font-size:10px; letter-spacing:2px; color:var(--muted2);">SINGLE ACTIVE RULE
+                    ENFORCED</span>
+            </div>
+            <div class="panel-body">
+                <div class="ctrl-grid">
+
+                    <!-- LEFT: Main Controls -->
+                    <div class="ctrl-section">
+                        <h3>Main Controls</h3>
+
+                        <button class="btn btn-main btn-power" id="btnPower" onclick="handleAction('traffic_mode')">
+                            Traffic Mode ON
+                            <span class="btn-indicator"></span>
+                        </button>
+
+                        <button class="btn btn-main" style="color:#ff6b6b;" id="btnOff"
+                            onclick="handleAction('all_off')">
+                            Turn OFF System
+                            <span class="btn-indicator"></span>
+                        </button>
+
+                        <button class="btn btn-builtin" id="btnBuiltin" onclick="handleAction('builtin_toggle')">
+                            <span>Built-in LED Toggle</span>
+                            <span class="btn-indicator"></span>
+                        </button>
+                    </div>
+
+                    <!-- RIGHT: Manual LED -->
+                    <div class="ctrl-section">
+                        <h3>Manual LED Override</h3>
+                        <p style="font-size:11px; color:var(--muted2); margin-bottom:4px; line-height:1.5;">
+                            Activating any LED below deactivates auto countdown.
+                        </p>
+
+                        <button class="btn btn-red" id="btnRed" onclick="handleAction('manual_red')">
+                            RED — STOP
+                            <span class="btn-indicator"></span>
+                        </button>
+
+                        <button class="btn btn-yellow" id="btnYellow" onclick="handleAction('manual_yellow')">
+                            YELLOW — READY
+                            <span class="btn-indicator"></span>
+                        </button>
+
+                        <button class="btn btn-green" id="btnGreen" onclick="handleAction('manual_green')">
+                            GREEN — GO
+                            <span class="btn-indicator"></span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ── COLUMN 2 ROW 3: METRICS ── -->
+        <div class="panel metrics-panel">
+            <div class="panel-head">
+                <h2>Session Metrics</h2>
+            </div>
+            <div class="metrics-grid">
+                <div class="metric">
+                    <span class="metric-label">Cycles Complete</span>
+                    <span class="metric-value" id="metCycles">0</span>
+                    <span class="metric-sub">Full red-yellow-green loops</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Commands Sent</span>
+                    <span class="metric-value" id="metCommands">0</span>
+                    <span class="metric-sub">To Supabase</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Active Mode</span>
+                    <span class="metric-value" id="metMode" style="font-size:14px;">OFF</span>
+                    <span class="metric-sub">Current operation</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── COLUMN 3: HISTORY ── -->
+        <div class="panel history-panel">
+            <div class="panel-head">
+                <h2>Event History</h2>
+                <span id="logCount" style="font-size:10px; letter-spacing:2px; color:var(--muted2);">0 EVENTS</span>
+            </div>
+            <div class="history-list" id="historyList">
+                <div
+                    style="padding:30px 12px; text-align:center; color:var(--muted); font-size:12px; letter-spacing:2px;">
+                    AWAITING EVENTS...
+                </div>
+            </div>
+            <div class="history-actions">
+                <button class="btn-sm" onclick="clearHistory()">Clear Log</button>
+                <button class="btn-sm" onclick="exportCSV()">Export CSV</button>
+            </div>
+        </div>
+
+    </div><!-- end .main -->
+
+    <!-- Mode change toast -->
+    <div class="mode-notice" id="modeNotice">Single active rule enforced</div>
+
+    <script>
+        // ═══════════════════════════════════════════════════
+        // CONFIGURATION — Replace with your actual values
+        // ═══════════════════════════════════════════════════
+        const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+        const SUPABASE_KEY = 'YOUR_ANON_KEY';
+
+        // Table names in Supabase:
+        // 1. "traffic_commands" — columns: id, action, created_at
+        // 2. "traffic_status"   — columns: id (always 1), wifi_connected, last_seen, current_state
+        // 3. "traffic_logs"     — columns: id, event, state, created_at
+
+        // ═══════════════════════════════════════════════════
+        // SUPABASE INIT
+        // ═══════════════════════════════════════════════════
+        let supabase = null;
+        let supabaseReady = false;
+
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            supabaseReady = true;
+            setStatus('supabase', 'online', 'SUPABASE — OK');
+            setSbDot('sbDot1', 'ok'); setSbVal('sbVal1', 'Supabase DB — Connected');
+        } catch (e) {
+            setStatus('supabase', 'error', 'SUPABASE — ERROR');
+            setSbDot('sbDot1', 'err'); setSbVal('sbVal1', 'Supabase DB — Failed');
+            console.error('Supabase init error:', e);
+        }
+
+        // ═══════════════════════════════════════════════════
+        // STATE
+        // ═══════════════════════════════════════════════════
+        const DURATIONS = { red: 30, yellow: 10, green: 30 };
+        const SEQUENCE = ['red', 'yellow', 'green'];
+
+        let currentMode = 'off';   // 'traffic_mode' | 'manual_red' | 'manual_yellow' | 'manual_green' | 'builtin_toggle' | 'off'
+        let countdownVal = 0;
+        let currentState = 'red';   // used in traffic mode
+        let cdTimer = null;
+        let sessionCycles = 0;
+        let cmdCount = 0;
+        let logEntries = [];
+        let builtinOn = false;
+
+        // ═══════════════════════════════════════════════════
+        // STATUS HELPERS
+        // ═══════════════════════════════════════════════════
+        function setStatus(which, state, label) {
+            const el = document.getElementById(which + 'Status');
+            const lb = document.getElementById(which + 'Label');
+            if (el) { el.className = 'status-pill ' + state; }
+            if (lb) lb.textContent = label;
+        }
+        function setSbDot(id, cls) {
+            const el = document.getElementById(id);
+            if (el) el.className = 'sb-dot ' + cls;
+        }
+        function setSbVal(id, txt) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = txt;
+        }
+
+        // ═══════════════════════════════════════════════════
+        // SUPABASE: SEND COMMAND
+        // ═══════════════════════════════════════════════════
+        async function sendCommand(action, extra = {}) {
+            if (!supabaseReady) return;
+            try {
+                const payload = { action, ...extra, created_at: new Date().toISOString() };
+                const { error } = await supabase.from('traffic_commands').insert([payload]);
+                if (error) throw error;
+                cmdCount++;
+                document.getElementById('metCommands').textContent = cmdCount;
+                setSbVal('sbVal4', 'Last sync: ' + new Date().toLocaleTimeString());
+                setSbDot('sbDot4', 'ok');
+            } catch (e) {
+                console.error('Command send failed:', e);
+                setSbDot('sbDot4', 'err');
+                setSbVal('sbVal4', 'Sync failed');
+            }
+        }
+
+        // ═══════════════════════════════════════════════════
+        // SUPABASE: LOG EVENT
+        // ═══════════════════════════════════════════════════
+        async function logEvent(event, state) {
+            if (!supabaseReady) return;
+            try {
+                await supabase.from('traffic_logs').insert([{
+                    event, state, created_at: new Date().toISOString()
+                }]);
+            } catch (e) { console.error('Log failed:', e); }
+        }
+
+        // ═══════════════════════════════════════════════════
+        // REALTIME SUBSCRIPTION (ESP32 status updates)
+        // ═══════════════════════════════════════════════════
+        function initRealtime() {
+            if (!supabaseReady) return;
+            try {
+                const channel = supabase
+                    .channel('traffic-status')
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'traffic_status'
+                    }, payload => {
+                        const data = payload.new;
+                        if (!data) return;
+
+                        // WiFi status
+                        if (data.wifi_connected !== undefined) {
+                            if (data.wifi_connected) {
+                                setStatus('wifi', 'online', 'WIFI — CONNECTED');
+                            } else {
+                                setStatus('wifi', 'error', 'WIFI — DISCONNECTED');
+                            }
+                        }
+                        // Heartbeat
+                        if (data.last_seen) {
+                            const d = new Date(data.last_seen);
+                            setSbVal('sbVal3', 'ESP32 — ' + d.toLocaleTimeString());
+                            setSbDot('sbDot3', 'ok');
+                        }
+                    })
+                    .subscribe(status => {
+                        if (status === 'SUBSCRIBED') {
+                            setSbDot('sbDot2', 'ok');
+                            setSbVal('sbVal2', 'Realtime — Active');
+                        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+                            setSbDot('sbDot2', 'err');
+                            setSbVal('sbVal2', 'Realtime — Disconnected');
+                        }
+                    });
+            } catch (e) {
+                console.error('Realtime init failed:', e);
+                setSbDot('sbDot2', 'err');
+            }
+        }
+        initRealtime();
+
+        // ═══════════════════════════════════════════════════
+        // TRAFFIC LIGHT UI UPDATE
+        // ═══════════════════════════════════════════════════
+        function setTrafficUI(active) {
+            // active: 'red' | 'yellow' | 'green' | null
+            const bulbs = ['red', 'yellow', 'green'];
+            bulbs.forEach(c => {
+                const el = document.getElementById('bulb-' + c);
+                el.className = 'tl-bulb ' + (c === active ? c + '-on' : c + '-dim');
+            });
+        }
+
+        function updateCountdown(val, state) {
+            const num = document.getElementById('cdNumber');
+            const st = document.getElementById('cdState');
+            const bar = document.getElementById('cdBar');
+            const lbl = document.getElementById('cdPhaseLabel');
+
+            const display = val < 10 ? '0' + val : '' + val;
+            num.textContent = display;
+
+            const stateMap = {
+                red: ['state-red', 'STOP'],
+                yellow: ['state-yellow', 'READY'],
+                green: ['state-green', 'GO'],
+                off: ['state-off', 'SYSTEM OFF']
+            };
+            const [cls, text] = stateMap[state] || stateMap.off;
+
+            num.className = 'cd-number ' + cls;
+            st.className = 'cd-state ' + cls;
+            st.textContent = text;
+            bar.className = 'cd-bar ' + cls;
+
+            const maxDur = state !== 'off' ? DURATIONS[state] : 1;
+            bar.style.width = (val / maxDur * 100) + '%';
+
+            if (lbl && state !== 'off') {
+                lbl.textContent = 'PHASE: ' + text;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════
+        // COUNTDOWN ENGINE
+        // ═══════════════════════════════════════════════════
+        function startTrafficMode() {
+            stopCountdown();
+            currentState = 'red';
+            runPhase('red');
+        }
+
+        function runPhase(state) {
+            if (currentMode !== 'traffic_mode') return;
+            currentState = state;
+            countdownVal = DURATIONS[state];
+
+            setTrafficUI(state);
+            updateCountdown(countdownVal, state);
+            sendCommand('auto_' + state, { state });
+            addLog('Phase: ' + state.toUpperCase(), state);
+
+            cdTimer = setInterval(() => {
+                if (currentMode !== 'traffic_mode') { clearInterval(cdTimer); return; }
+                countdownVal--;
+                updateCountdown(countdownVal, state);
+
+                if (countdownVal <= 0) {
+                    clearInterval(cdTimer);
+                    const idx = SEQUENCE.indexOf(state);
+                    const next = SEQUENCE[(idx + 1) % SEQUENCE.length];
+                    if (next === 'red') sessionCycles++;
+                    document.getElementById('metCycles').textContent = sessionCycles;
+                    runPhase(next);
+                }
+            }, 1000);
+        }
+
+        function stopCountdown() {
+            if (cdTimer) { clearInterval(cdTimer); cdTimer = null; }
+        }
+
+        // ═══════════════════════════════════════════════════
+        // SINGLE ACTIVE RULE — HANDLE ACTION
+        // ═══════════════════════════════════════════════════
+        function handleAction(action) {
+            // Toggle off if same mode re-clicked
+            if (currentMode === action) {
+                deactivateAll();
+                return;
+            }
+
+            // Enforce single active
+            if (currentMode !== 'off') {
+                showNotice('Previous mode deactivated');
+            }
+
+            deactivateAll();
+            currentMode = action;
+
+            // Update button styles
+            clearBtnStates();
+
+            switch (action) {
+                case 'traffic_mode':
+                    activateBtn('btnPower');
+                    document.getElementById('metMode').textContent = 'AUTO';
+                    document.getElementById('tlPowerLabel').textContent = 'AUTO';
+                    startTrafficMode();
+                    addLog('Traffic mode activated', 'system');
+                    sendCommand('traffic_mode');
+                    logEvent('Traffic mode ON', 'system');
+                    break;
+
+                case 'all_off':
+                    document.getElementById('metMode').textContent = 'OFF';
+                    document.getElementById('tlPowerLabel').textContent = 'OFF';
+                    document.getElementById('cdPhaseLabel').textContent = 'PHASE: --';
+                    setTrafficUI(null);
+                    updateCountdown('--', 'off');
+                    addLog('System turned OFF', 'system');
+                    sendCommand('all_off');
+                    logEvent('System OFF', 'system');
+                    currentMode = 'off';
+                    break;
+
+                case 'manual_red':
+                    activateBtn('btnRed');
+                    document.getElementById('metMode').textContent = 'MANUAL';
+                    document.getElementById('tlPowerLabel').textContent = 'MANUAL';
+                    setTrafficUI('red');
+                    updateCountdown('--', 'red');
+                    addLog('Manual: RED LED on', 'red');
+                    sendCommand('manual_red');
+                    logEvent('Manual RED', 'red');
+                    break;
+
+                case 'manual_yellow':
+                    activateBtn('btnYellow');
+                    document.getElementById('metMode').textContent = 'MANUAL';
+                    document.getElementById('tlPowerLabel').textContent = 'MANUAL';
+                    setTrafficUI('yellow');
+                    updateCountdown('--', 'yellow');
+                    addLog('Manual: YELLOW LED on', 'yellow');
+                    sendCommand('manual_yellow');
+                    logEvent('Manual YELLOW', 'yellow');
+                    break;
+
+                case 'manual_green':
+                    activateBtn('btnGreen');
+                    document.getElementById('metMode').textContent = 'MANUAL';
+                    document.getElementById('tlPowerLabel').textContent = 'MANUAL';
+                    setTrafficUI('green');
+                    updateCountdown('--', 'green');
+                    addLog('Manual: GREEN LED on', 'green');
+                    sendCommand('manual_green');
+                    logEvent('Manual GREEN', 'green');
+                    break;
+
+                case 'builtin_toggle':
+                    builtinOn = !builtinOn;
+                    activateBtn('btnBuiltin');
+                    const state2 = builtinOn ? 'builtin_on' : 'builtin_off';
+                    addLog('Built-in LED: ' + (builtinOn ? 'ON' : 'OFF'), 'manual');
+                    sendCommand(state2);
+                    logEvent('Built-in LED ' + (builtinOn ? 'ON' : 'OFF'), 'system');
+                    // Built-in toggle doesn't lock out other functions — it's separate
+                    currentMode = 'off'; // allow other buttons still
+                    break;
+            }
+        }
+
+        function deactivateAll() {
+            stopCountdown();
+            currentMode = 'off';
+            setTrafficUI(null);
+            updateCountdown('--', 'off');
+            clearBtnStates();
+        }
+
+        function clearBtnStates() {
+            ['btnPower', 'btnOff', 'btnRed', 'btnYellow', 'btnGreen', 'btnBuiltin'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.remove('active');
+            });
+        }
+
+        function activateBtn(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('active');
+        }
+
+        // ═══════════════════════════════════════════════════
+        // HISTORY LOG
+        // ═══════════════════════════════════════════════════
+        function addLog(msg, type) {
+            const list = document.getElementById('historyList');
+            const now = new Date();
+            const time = now.toLocaleTimeString() + ' · ' + now.toLocaleDateString();
+
+            logEntries.unshift({ msg, type, time });
+
+            // Remove placeholder
+            const placeholder = list.querySelector('div[style]');
+            if (placeholder) placeholder.remove();
+
+            const entry = document.createElement('div');
+            entry.className = 'log-entry log-' + type;
+            entry.innerHTML = `
+    <div class="log-dot"></div>
+    <div class="log-content">
+      <div class="log-msg">${msg}</div>
+      <div class="log-time">${time}</div>
+    </div>
+  `;
+            list.insertBefore(entry, list.firstChild);
+
+            document.getElementById('logCount').textContent = logEntries.length + ' EVENTS';
+        }
+
+        function clearHistory() {
+            logEntries = [];
+            const list = document.getElementById('historyList');
+            list.innerHTML = '<div style="padding:30px 12px; text-align:center; color:var(--muted); font-size:12px; letter-spacing:2px;">AWAITING EVENTS...</div>';
+            document.getElementById('logCount').textContent = '0 EVENTS';
+        }
+
+        function exportCSV() {
+            if (logEntries.length === 0) return;
+            const header = 'Timestamp,Event,Type\n';
+            const rows = logEntries.map(e => `"${e.time}","${e.msg}","${e.type}"`).join('\n');
+            const blob = new Blob([header + rows], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'traffic_log_' + Date.now() + '.csv';
+            a.click(); URL.revokeObjectURL(url);
+        }
+
+        // ═══════════════════════════════════════════════════
+        // MODE NOTICE
+        // ═══════════════════════════════════════════════════
+        let noticeTimer = null;
+        function showNotice(msg) {
+            const el = document.getElementById('modeNotice');
+            el.textContent = msg;
+            el.classList.add('show');
+            if (noticeTimer) clearTimeout(noticeTimer);
+            noticeTimer = setTimeout(() => el.classList.remove('show'), 2500);
+        }
+
+        // ═══════════════════════════════════════════════════
+        // INIT
+        // ═══════════════════════════════════════════════════
+        addLog('Dashboard initialized', 'system');
+        setStatus('wifi', '', 'WIFI — MONITORING');
+    </script>
+</body>
+
+</html>

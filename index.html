@@ -2,234 +2,321 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Traffic Control System - Exclusive Manual Control</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartNode — Dashboard Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap"
+    rel="stylesheet">
   <style>
-    * {
+    *,
+    *::before,
+    *::after {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
 
+    :root {
+      --bg: #04070f;
+      --panel: #080f1e;
+      --border: rgba(0, 200, 255, 0.15);
+      --accent-blue: #00c8ff;
+      --accent-green: #00ff88;
+      --accent-amber: #ffb300;
+      --accent-red: #ff3860;
+      --text: #d0e8ff;
+      --muted: #4a6070;
+    }
+
     body {
-      font-family: 'Segoe UI', 'Inter', 'Poppins', sans-serif;
-      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+      background: var(--bg);
       min-height: 100vh;
-      color: #fff;
-      padding: 20px;
-    }
-
-    .container {
-      max-width: 1400px;
-      margin: 0 auto;
-    }
-
-    .header {
-      text-align: center;
-      margin-bottom: 40px;
-      padding: 20px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 20px;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .header h1 {
-      font-size: 2.5rem;
-      font-weight: 300;
-      letter-spacing: 2px;
-      background: linear-gradient(135deg, #fff, #4facfe);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .status-badge {
-      display: inline-block;
-      margin-top: 10px;
-      padding: 5px 15px;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      background: rgba(79, 172, 254, 0.2);
-      border: 1px solid rgba(79, 172, 254, 0.3);
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-      gap: 25px;
-      margin-bottom: 25px;
-    }
-
-    .card {
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 20px;
-      padding: 25px;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      transition: transform 0.3s ease;
-    }
-
-    .card:hover {
-      transform: translateY(-5px);
-    }
-
-    .card-title {
-      font-size: 1.2rem;
-      font-weight: 500;
-      margin-bottom: 20px;
-      padding-bottom: 10px;
-      border-bottom: 2px solid rgba(79, 172, 254, 0.5);
-      display: inline-block;
-    }
-
-    .traffic-light {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 15px;
-      background: rgba(0, 0, 0, 0.5);
-      padding: 20px;
-      border-radius: 50px;
-      width: 120px;
-      margin: 0 auto;
+      justify-content: center;
+      font-family: 'Rajdhani', sans-serif;
+      color: var(--text);
+      overflow: hidden;
     }
 
-    .light {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      background: #2a2a2a;
-      transition: all 0.1s ease;
-      cursor: pointer;
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 200, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 200, 255, 0.04) 1px, transparent 1px);
+      background-size: 60px 60px;
+      animation: gridDrift 20s linear infinite;
+      pointer-events: none;
     }
 
-    .light.red.active {
-      background: #ff0000;
-      box-shadow: 0 0 30px #ff0000;
+    @keyframes gridDrift {
+      0% {
+        background-position: 0 0;
+      }
+
+      100% {
+        background-position: 60px 60px;
+      }
     }
 
-    .light.yellow.active {
-      background: #ffff00;
-      box-shadow: 0 0 30px #ffff00;
+    /* Radial glow */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 900px;
+      height: 900px;
+      background: radial-gradient(ellipse, rgba(0, 100, 200, 0.12) 0%, transparent 70%);
+      pointer-events: none;
     }
 
-    .light.green.active {
-      background: #00ff00;
-      box-shadow: 0 0 30px #00ff00;
+    .hub {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 56px;
     }
 
-    .countdown-container {
+    .brand {
       text-align: center;
-      margin-top: 20px;
     }
 
-    .countdown {
-      font-size: 5rem;
-      font-weight: bold;
-      font-family: 'Courier New', monospace;
-      letter-spacing: 5px;
-      background: linear-gradient(135deg, #fff, #4facfe);
+    .brand-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 11px;
+      letter-spacing: 8px;
+      color: var(--accent-blue);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      opacity: 0.7;
+    }
+
+    .brand h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(2rem, 6vw, 4rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, #fff 30%, var(--accent-blue));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      letter-spacing: 2px;
     }
 
-    .control-buttons {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      margin-top: 15px;
+    .brand p {
+      margin-top: 16px;
+      font-size: 16px;
+      color: var(--muted);
+      letter-spacing: 3px;
+      text-transform: uppercase;
     }
 
-    .control-buttons button {
-      padding: 10px 20px;
-      font-size: 1rem;
-    }
-
-    .btn-group {
+    .cards {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 10px;
-      margin-top: 15px;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
     }
 
-    button {
-      padding: 12px 15px;
-      background: rgba(79, 172, 254, 0.2);
-      border: 1px solid rgba(79, 172, 254, 0.3);
-      color: white;
-      border-radius: 10px;
+    @media (max-width: 640px) {
+      .cards {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      position: relative;
+      width: 300px;
+      padding: 36px 32px;
+      background: var(--panel);
+      border: 1px solid var(--border);
       cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 500;
-      transition: all 0.2s ease;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+      transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+      clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%);
     }
 
-    button:hover {
-      background: rgba(79, 172, 254, 0.4);
-      transform: scale(1.02);
-    }
-
-    button:active {
-      transform: scale(0.98);
-    }
-
-    button.active {
-      background: #4facfe;
-      border-color: #4facfe;
-      box-shadow: 0 0 15px rgba(79, 172, 254, 0.5);
-    }
-
-    button.danger {
-      background: rgba(255, 0, 0, 0.2);
-      border-color: rgba(255, 0, 0, 0.3);
-    }
-
-    button.danger.active {
-      background: #ff0000;
-      border-color: #ff0000;
-    }
-
-    button.success.active {
-      background: #00ff00;
-      border-color: #00ff00;
-      color: #000;
-    }
-
-    .history-table {
-      width: 100%;
-      overflow-x: auto;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    th,
-    td {
-      padding: 12px;
-      text-align: left;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    th {
-      font-weight: 500;
-      color: #4facfe;
-      position: sticky;
+    .card::before {
+      content: '';
+      position: absolute;
       top: 0;
-      background: rgba(26, 26, 46, 0.95);
+      left: 0;
+      right: 0;
+      bottom: 0;
+      opacity: 0;
+      transition: opacity 0.3s;
     }
 
-    .status-indicator {
+    .card-traffic::before {
+      background: radial-gradient(ellipse at 50% 0%, rgba(255, 80, 80, 0.08), transparent 70%);
+    }
+
+    .card-env::before {
+      background: radial-gradient(ellipse at 50% 0%, rgba(0, 255, 136, 0.08), transparent 70%);
+    }
+
+    .card:hover {
+      transform: translateY(-6px);
+    }
+
+    .card:hover::before {
+      opacity: 1;
+    }
+
+    .card-traffic:hover {
+      border-color: rgba(255, 80, 80, 0.5);
+      box-shadow: 0 20px 60px rgba(255, 80, 80, 0.15), 0 0 0 1px rgba(255, 80, 80, 0.2);
+    }
+
+    .card-env:hover {
+      border-color: rgba(0, 255, 136, 0.4);
+      box-shadow: 0 20px 60px rgba(0, 255, 136, 0.12), 0 0 0 1px rgba(0, 255, 136, 0.2);
+    }
+
+    .card-icon {
+      width: 56px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 2px;
+      font-size: 26px;
+    }
+
+    .card-traffic .card-icon {
+      background: rgba(255, 56, 96, 0.1);
+      border: 1px solid rgba(255, 56, 96, 0.3);
+      color: var(--accent-red);
+    }
+
+    .card-env .card-icon {
+      background: rgba(0, 255, 136, 0.08);
+      border: 1px solid rgba(0, 255, 136, 0.25);
+      color: var(--accent-green);
+    }
+
+    .card-number {
+      position: absolute;
+      top: 14px;
+      right: 18px;
+      font-family: 'Orbitron', monospace;
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: var(--muted);
+    }
+
+    .card h2 {
+      font-family: 'Orbitron', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      line-height: 1.3;
+    }
+
+    .card-traffic h2 {
+      color: #ff8096;
+    }
+
+    .card-env h2 {
+      color: #80ffbf;
+    }
+
+    .card p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .card-arrow {
+      margin-top: 8px;
+      font-size: 12px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: gap 0.3s;
+    }
+
+    .card-traffic .card-arrow {
+      color: var(--accent-red);
+    }
+
+    .card-env .card-arrow {
+      color: var(--accent-green);
+    }
+
+    .card:hover .card-arrow {
+      gap: 14px;
+    }
+
+    .card-arrow::after {
+      content: '→';
+      font-size: 16px;
+    }
+
+    .footer-note {
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      text-align: center;
+      opacity: 0.5;
+    }
+
+    /* Corner cut decoration */
+    .card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 0 20px 20px 0;
+    }
+
+    .card-traffic::after {
+      border-color: transparent rgba(255, 56, 96, 0.25) transparent transparent;
+    }
+
+    .card-env::after {
+      border-color: transparent rgba(0, 255, 136, 0.2) transparent transparent;
+    }
+
+    /* Pulse dots */
+    .pulse-dot {
       display: inline-block;
-      width: 10px;
-      height: 10px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
-      margin-right: 8px;
-      animation: pulse 2s infinite;
+      animation: pulse 2s ease-in-out infinite;
+      margin-right: 6px;
+    }
+
+    .pulse-dot.red {
+      background: var(--accent-red);
+      box-shadow: 0 0 8px var(--accent-red);
+    }
+
+    .pulse-dot.green {
+      background: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+      animation-delay: 0.5s;
     }
 
     @keyframes pulse {
@@ -237,408 +324,51 @@
       0%,
       100% {
         opacity: 1;
+        transform: scale(1);
       }
 
       50% {
-        opacity: 0.5;
-      }
-    }
-
-    .status-active {
-      background: #00ff00;
-      box-shadow: 0 0 5px #00ff00;
-    }
-
-    .mode-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-weight: bold;
-    }
-
-    .mode-auto {
-      background: rgba(79, 172, 254, 0.3);
-      color: #4facfe;
-    }
-
-    .mode-manual {
-      background: rgba(255, 165, 0, 0.3);
-      color: #ffa500;
-    }
-
-    .mode-off {
-      background: rgba(255, 0, 0, 0.3);
-      color: #ff0000;
-    }
-
-    @media (max-width: 768px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
-
-      .countdown {
-        font-size: 3rem;
+        opacity: 0.4;
+        transform: scale(0.7);
       }
     }
   </style>
 </head>
 
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>TRAFFIC CONTROL SYSTEM</h1>
-      <div class="status-badge">
-        <span class="status-indicator status-active"></span> EXCLUSIVE MANUAL CONTROL
-      </div>
+  <div class="hub">
+    <div class="brand">
+      <div class="brand-label">ESP32 · Supabase · Real-Time</div>
+      <h1>SMARTNODE</h1>
+      <p>Integrated IoT Dashboard System</p>
     </div>
 
-    <div class="grid">
-      <!-- Traffic Light Visual -->
-      <div class="card">
-        <div class="card-title">TRAFFIC LIGHT</div>
-        <div class="traffic-light">
-          <div class="light red" id="redLight"></div>
-          <div class="light yellow" id="yellowLight"></div>
-          <div class="light green" id="greenLight"></div>
+    <div class="cards">
+      <a class="card card-traffic" href="traffic.html">
+        <span class="card-number">PAGE 01</span>
+        <div class="card-icon">&#9677;</div>
+        <h2>TRAFFIC LIGHT<br>CONTROL</h2>
+        <p>Real-time LED control with countdown timer, manual overrides, and event logging.</p>
+        <div class="card-arrow">
+          <span class="pulse-dot red"></span>
+          Enter Dashboard
         </div>
-        <div class="countdown-container">
-          <div class="countdown" id="countdown">30</div>
-          <div class="control-buttons">
-            <button onclick="resetCycle()">RESET CYCLE</button>
-          </div>
-        </div>
-        <div id="currentState" style="text-align: center; margin-top: 10px;"></div>
-      </div>
+      </a>
 
-      <!-- System Control -->
-      <div class="card">
-        <div class="card-title">SYSTEM CONTROL</div>
-        <div class="btn-group">
-          <button id="toggleSystem" class="active" onclick="toggleSystem()">🔄 SYSTEM ACTIVE</button>
+      <a class="card card-env" href="humidity.html">
+        <span class="card-number">PAGE 02</span>
+        <div class="card-icon">&#9729;</div>
+        <h2>TEMPERATURE &amp;<br>HUMIDITY MONITOR</h2>
+        <p>DHT11 baby-safe environment monitor with alerts, trends, and CSV export.</p>
+        <div class="card-arrow">
+          <span class="pulse-dot green"></span>
+          Enter Dashboard
         </div>
-        <div style="margin-top: 20px;">
-          <div style="margin-bottom: 10px;">MODE: <span id="systemStatus" class="mode-badge mode-auto">AUTOMATIC</span>
-          </div>
-          <div>COUNTDOWN SPEED: <span id="speedDisplay">1x</span></div>
-          <input type="range" id="speedControl" min="0.5" max="2" step="0.1" value="1"
-            onchange="changeSpeed(this.value)">
-        </div>
-      </div>
-
-      <!-- Manual Control - Exclusive Mode -->
-      <div class="card">
-        <div class="card-title">MANUAL OVERRIDE (EXCLUSIVE)</div>
-        <div class="btn-group">
-          <button id="manualRedBtn" class="danger" onclick="manualControl('RED')">🔴 RED LIGHT</button>
-          <button id="manualYellowBtn" onclick="manualControl('YELLOW')">🟡 YELLOW LIGHT</button>
-          <button id="manualGreenBtn" class="success" onclick="manualControl('GREEN')">🟢 GREEN LIGHT</button>
-        </div>
-        <div class="btn-group" style="margin-top: 10px;">
-          <button id="buzzerBtn" onclick="manualControl('BUZZER')">🔊 TEST BUZZER</button>
-          <button id="espLedBtn" onclick="manualControl('LED')">💡 ESP32 LED</button>
-        </div>
-        <div style="margin-top: 10px; font-size: 0.8rem; color: #4facfe; text-align: center;">
-          ⚡ Only ONE function works at a time
-        </div>
-      </div>
+      </a>
     </div>
 
-    <!-- History -->
-    <div class="card">
-      <div class="card-title">LIGHT HISTORY</div>
-      <div class="history-table">
-        <table>
-          <thead>
-            <tr>
-              <th>TIME</th>
-              <th>STATE</th>
-              <th>COUNTDOWN</th>
-              <th>MODE</th>
-            </tr>
-          </thead>
-          <tbody id="historyBody">
-            <tr>
-              <td colspan="4" style="text-align: center;">Loading...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <div class="footer-note">ESP32 · DHT11 · Supabase Real-Time · SmartNode v1.0</div>
   </div>
-
-  <script>
-    const SUPABASE_URL = 'https://aatapixarmkgyyyctbmm.supabase.co/rest/v1/traffic_light';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhdGFwaXhhcm1rZ3l5eWN0Ym1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MTA0MjIsImV4cCI6MjA5MDE4NjQyMn0.r6-kIZEgDO9A2GAGDs1JRXCNVFBPLk1Nut5XPCVxQf8';
-
-    // State variables
-    let currentState = "RED";
-    let countdown = 30;
-    let systemEnabled = true;
-    let manualMode = false;
-    let manualLed = "";
-    let speed = 1;
-    let timerInterval = null;
-    let history = [];
-
-    const TIMINGS = {
-      RED: 30,
-      YELLOW: 10,
-      GREEN: 30
-    };
-
-    function init() {
-      updateDisplay();
-      startCountdown();
-      loadHistory();
-      setInterval(loadHistory, 2000);
-    }
-
-    function startCountdown() {
-      if (timerInterval) clearInterval(timerInterval);
-
-      timerInterval = setInterval(() => {
-        if (systemEnabled && !manualMode) {
-          if (countdown > 0) {
-            countdown--;
-            updateDisplay();
-            sendToSupabase();
-          } else {
-            nextState();
-          }
-        }
-      }, 1000 / speed);
-    }
-
-    function nextState() {
-      if (currentState === "RED") {
-        currentState = "GREEN";
-        countdown = TIMINGS.GREEN;
-      } else if (currentState === "GREEN") {
-        currentState = "YELLOW";
-        countdown = TIMINGS.YELLOW;
-      } else if (currentState === "YELLOW") {
-        currentState = "RED";
-        countdown = TIMINGS.RED;
-      }
-
-      updateDisplay();
-      sendToSupabase();
-      addToHistory();
-    }
-
-    function updateDisplay() {
-      document.getElementById('redLight').classList.remove('active');
-      document.getElementById('yellowLight').classList.remove('active');
-      document.getElementById('greenLight').classList.remove('active');
-
-      if (currentState === "RED") {
-        document.getElementById('redLight').classList.add('active');
-        document.getElementById('currentState').innerHTML = 'STOP - Red Light';
-      } else if (currentState === "YELLOW") {
-        document.getElementById('yellowLight').classList.add('active');
-        document.getElementById('currentState').innerHTML = 'READY - Yellow Light';
-      } else if (currentState === "GREEN") {
-        document.getElementById('greenLight').classList.add('active');
-        document.getElementById('currentState').innerHTML = 'GO - Green Light';
-      }
-
-      document.getElementById('countdown').innerHTML = countdown;
-      const countdownEl = document.getElementById('countdown');
-      countdownEl.style.transform = 'scale(1.1)';
-      setTimeout(() => {
-        countdownEl.style.transform = 'scale(1)';
-      }, 100);
-    }
-
-    async function sendToSupabase() {
-      const data = {
-        state: currentState,
-        countdown: countdown,
-        system_enabled: systemEnabled,
-        manual_mode: manualMode,
-        manual_led: manualLed,
-        timestamp: Date.now()
-      };
-
-      try {
-        await fetch(SUPABASE_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`
-          },
-          body: JSON.stringify(data)
-        });
-      } catch (error) {
-        console.error('Error:', error);
-      }
-    }
-
-    async function addToHistory() {
-      const historyEntry = {
-        state: currentState,
-        countdown: countdown,
-        mode: systemEnabled ? (manualMode ? 'MANUAL' : 'AUTO') : 'OFF',
-        timestamp: Date.now()
-      };
-
-      try {
-        await fetch(SUPABASE_URL + '_history', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`
-          },
-          body: JSON.stringify(historyEntry)
-        });
-      } catch (error) {
-        console.error('Error:', error);
-      }
-    }
-
-    async function loadHistory() {
-      try {
-        const response = await fetch(`${SUPABASE_URL}_history?order=id.desc&limit=20`, {
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`
-          }
-        });
-        const data = await response.json();
-        history = data;
-        updateHistoryTable();
-      } catch (error) {
-        console.error('Error:', error);
-      }
-    }
-
-    function updateHistoryTable() {
-      const tbody = document.getElementById('historyBody');
-      if (history.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No history available</td></tr>';
-        return;
-      }
-      tbody.innerHTML = history.map(entry => `
-        <tr>
-          <td>${new Date(entry.timestamp).toLocaleTimeString()}</td>
-          <td><strong>${entry.state}</strong></td>
-          <td>${entry.countdown}s</td>
-          <td>${entry.mode}</td>
-        </tr>
-      `).join('');
-    }
-
-    function toggleSystem() {
-      systemEnabled = !systemEnabled;
-      manualMode = false;
-      manualLed = "";
-
-      const btn = document.getElementById('toggleSystem');
-      const statusSpan = document.getElementById('systemStatus');
-
-      if (systemEnabled) {
-        btn.innerHTML = '🔄 SYSTEM ACTIVE';
-        btn.classList.add('active');
-        statusSpan.innerHTML = 'AUTOMATIC';
-        statusSpan.className = 'mode-badge mode-auto';
-        startCountdown();
-      } else {
-        btn.innerHTML = '⭕ SYSTEM DISABLED';
-        btn.classList.remove('active');
-        statusSpan.innerHTML = 'OFF';
-        statusSpan.className = 'mode-badge mode-off';
-        if (timerInterval) clearInterval(timerInterval);
-      }
-
-      // Clear all manual button highlights
-      clearManualButtons();
-      sendToSupabase();
-    }
-
-    function manualControl(action) {
-      // Turn off automatic mode
-      if (systemEnabled) {
-        if (timerInterval) clearInterval(timerInterval);
-      }
-
-      // Set manual mode
-      systemEnabled = true;
-      manualMode = true;
-      manualLed = action;
-
-      // Update UI - highlight only the clicked button
-      clearManualButtons();
-
-      const btnMap = {
-        'RED': 'manualRedBtn',
-        'YELLOW': 'manualYellowBtn',
-        'GREEN': 'manualGreenBtn',
-        'BUZZER': 'buzzerBtn',
-        'LED': 'espLedBtn'
-      };
-
-      if (btnMap[action]) {
-        const activeBtn = document.getElementById(btnMap[action]);
-        if (activeBtn) {
-          activeBtn.classList.add('active');
-        }
-      }
-
-      // Update system status display
-      document.getElementById('systemStatus').innerHTML = 'MANUAL';
-      document.getElementById('systemStatus').className = 'mode-badge mode-manual';
-      document.getElementById('toggleSystem').innerHTML = '🔄 MANUAL MODE';
-      document.getElementById('toggleSystem').classList.remove('active');
-
-      // Send to ESP32
-      sendToSupabase();
-
-      // Auto exit manual mode after 3 seconds for buzzer and LED
-      if (action === 'BUZZER' || action === 'LED') {
-        setTimeout(() => {
-          if (manualMode && manualLed === action) {
-            manualMode = false;
-            manualLed = "";
-            clearManualButtons();
-            document.getElementById('systemStatus').innerHTML = 'AUTOMATIC';
-            document.getElementById('systemStatus').className = 'mode-badge mode-auto';
-            document.getElementById('toggleSystem').innerHTML = '🔄 SYSTEM ACTIVE';
-            document.getElementById('toggleSystem').classList.add('active');
-            startCountdown();
-            sendToSupabase();
-          }
-        }, 3000);
-      }
-    }
-
-    function clearManualButtons() {
-      const buttons = ['manualRedBtn', 'manualYellowBtn', 'manualGreenBtn', 'buzzerBtn', 'espLedBtn'];
-      buttons.forEach(btnId => {
-        const btn = document.getElementById(btnId);
-        if (btn) btn.classList.remove('active');
-      });
-    }
-
-    function resetCycle() {
-      if (systemEnabled && !manualMode) {
-        currentState = "RED";
-        countdown = TIMINGS.RED;
-        updateDisplay();
-        sendToSupabase();
-      }
-    }
-
-    function changeSpeed(value) {
-      speed = parseFloat(value);
-      document.getElementById('speedDisplay').innerHTML = speed + 'x';
-      startCountdown();
-    }
-
-    init();
-  </script>
 </body>
 
 </html>
