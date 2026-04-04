@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Temp &amp; Humidity — SmartNode</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400&display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #050c12;
+            --bg2: #081018;
+            --safe: #30d158;
+            --warn: #ff9f0a;
+            --danger: #ff2d55;
+            --accent: #00d4ff;
+            --accent2: #5e81f4;
+            --text: #e8edf5;
+            --muted: #3d4a60;
+            --card: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.07);
+            --radius: 14px;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Rajdhani', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(0, 212, 255, 0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.025) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 0;
+        }
+
+        /* TOPBAR */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            height: 58px;
+            background: rgba(5, 12, 18, 0.92);
+            backdrop-filter: blur(14px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+            text-decoration: none;
+            text-transform: uppercase;
+            transition: color 0.2s;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .back-btn:hover {
+            color: var(--accent);
+        }
+
+        .topbar-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.85rem;
+            font-weight: 800;
+            letter-spacing: 0.15em;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--muted);
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .dot.green {
+            background: #22c55e;
+            box-shadow: 0 0 6px #22c55e;
+        }
+
+        .dot.yellow {
+            background: #eab308;
+            box-shadow: 0 0 6px #eab308;
+        }
+
+        .dot.red-d {
+            background: var(--danger);
+            box-shadow: 0 0 6px var(--danger);
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        /* PAGE */
+        .page {
+            position: relative;
+            z-index: 1;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 28px 20px 60px;
+        }
+
+        .page-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--accent);
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .page-title {
+            font-family: 'Orbitron', monospace;
+            font-size: clamp(1.6rem, 4vw, 2.6rem);
+            font-weight: 900;
+            margin-bottom: 28px;
+        }
+
+        .page-title span {
+            color: var(--accent);
+            text-shadow: 0 0 30px var(--accent);
+        }
+
+        /* CARD */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-header-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* MAIN GRID */
+        .top-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        @media(max-width:768px) {
+            .top-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .mid-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        @media(max-width:768px) {
+            .mid-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* BIG METRIC */
+        .metric-card {
+            background: var(--card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .metric-card.safe {
+            border-color: rgba(48, 209, 88, 0.3);
+        }
+
+        .metric-card.safe::before {
+            background: rgba(48, 209, 88, 0.07);
+        }
+
+        .metric-card.warn {
+            border-color: rgba(255, 159, 10, 0.3);
+        }
+
+        .metric-card.warn::before {
+            background: rgba(255, 159, 10, 0.07);
+        }
+
+        .metric-card.danger {
+            border-color: rgba(255, 45, 85, 0.35);
+        }
+
+        .metric-card.danger::before {
+            background: rgba(255, 45, 85, 0.07);
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+        }
+
+        .metric-card>* {
+            position: relative;
+            z-index: 1;
+        }
+
+        .metric-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+
+        .metric-val {
+            font-family: 'Orbitron', monospace;
+            font-size: 3.5rem;
+            font-weight: 900;
+            line-height: 1;
+            transition: color 0.4s;
+        }
+
+        .metric-val.safe {
+            color: var(--safe);
+            text-shadow: 0 0 30px rgba(48, 209, 88, 0.4);
+        }
+
+        .metric-val.warn {
+            color: var(--warn);
+            text-shadow: 0 0 30px rgba(255, 159, 10, 0.4);
+        }
+
+        .metric-val.danger {
+            color: var(--danger);
+            text-shadow: 0 0 30px rgba(255, 45, 85, 0.4);
+        }
+
+        .metric-unit {
+            font-size: 1.4rem;
+            font-weight: 400;
+            opacity: 0.6;
+        }
+
+        .metric-status {
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+        }
+
+        .status-badge.safe {
+            background: rgba(48, 209, 88, 0.12);
+            color: var(--safe);
+            border: 1px solid rgba(48, 209, 88, 0.3);
+        }
+
+        .status-badge.warn {
+            background: rgba(255, 159, 10, 0.12);
+            color: var(--warn);
+            border: 1px solid rgba(255, 159, 10, 0.3);
+        }
+
+        .status-badge.danger {
+            background: rgba(255, 45, 85, 0.12);
+            color: var(--danger);
+            border: 1px solid rgba(255, 45, 85, 0.3);
+        }
+
+        .status-badge::before {
+            content: '';
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .metric-range {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+
+        /* OVERALL STATUS */
+        .overall-card {
+            background: var(--card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s;
+        }
+
+        .overall-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+
+        .overall-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.1rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .overall-desc {
+            font-size: 0.85rem;
+            color: rgba(232, 237, 245, 0.55);
+            line-height: 1.5;
+        }
+
+        /* ALERTS */
+        .alerts-area {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .alert-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.02);
+            animation: slideIn 0.3s ease;
+        }
+
+        .alert-row.safe {
+            border-color: rgba(48, 209, 88, 0.25);
+            background: rgba(48, 209, 88, 0.05);
+        }
+
+        .alert-row.warn {
+            border-color: rgba(255, 159, 10, 0.25);
+            background: rgba(255, 159, 10, 0.05);
+        }
+
+        .alert-row.danger {
+            border-color: rgba(255, 45, 85, 0.25);
+            background: rgba(255, 45, 85, 0.05);
+        }
+
+        .alert-icon {
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .alert-text {
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .alert-text strong {
+            display: block;
+            margin-bottom: 2px;
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+        }
+
+        .alert-text span {
+            color: rgba(232, 237, 245, 0.55);
+            font-size: 0.8rem;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        /* TIPS */
+        .tip-box {
+            padding: 14px 16px;
+            border-radius: 10px;
+            background: rgba(94, 129, 244, 0.07);
+            border: 1px solid rgba(94, 129, 244, 0.2);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: rgba(232, 237, 245, 0.7);
+            display: flex;
+            gap: 10px;
+        }
+
+        .tip-box::before {
+            content: '💡';
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        /* CHARTS */
+        .chart-wrap {
+            position: relative;
+            height: 220px;
+        }
+
+        /* UPDATE TIMER */
+        .update-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--muted);
+        }
+
+        .spinner {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid var(--muted);
+            border-top-color: var(--accent);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* LOG TABLE */
+        .log-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        .log-table th {
+            padding: 10px 14px;
+            text-align: left;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .log-table td {
+            padding: 9px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .log-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .log-scroll {
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .log-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .log-scroll::-webkit-scrollbar-thumb {
+            background: var(--muted);
+            border-radius: 99px;
+        }
+
+        .export-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            background: rgba(0, 212, 255, 0.06);
+            color: var(--accent);
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.08em;
+            transition: all 0.2s;
+        }
+
+        .export-btn:hover {
+            background: rgba(0, 212, 255, 0.12);
+            border-color: var(--accent);
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            z-index: 9999;
+            background: rgba(5, 12, 18, 0.95);
+            border: 1px solid var(--border);
+            padding: 14px 20px;
+            border-radius: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            color: var(--accent);
+            backdrop-filter: blur(12px);
+            transform: translateY(20px);
+            opacity: 0;
+            transition: all 0.3s;
+            pointer-events: none;
+        }
+
+        #toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .gauge-wrap {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 0;
+        }
+
+        .gauge {
+            flex: 1;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.07);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+
+        .gauge-fill {
+            height: 100%;
+            border-radius: 99px;
+            transition: width 1s ease, background 0.5s;
+        }
+
+        .gauge-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <a href="index.html" class="back-btn">← Home</a>
+            <div class="topbar-title">ENV MONITOR</div>
+        </div>
+        <div class="topbar-right">
+            <div class="status-pill"><span class="dot yellow" id="sbDot"></span>Supabase</div>
+            <div class="status-pill"><span class="dot yellow" id="wifiDot"></span>WiFi</div>
+            <div class="status-pill"><span class="dot red-d" id="espDot"></span>ESP32</div>
+            <div class="update-row">
+                <div class="spinner"></div>
+                <span id="nextUpdate">Next: 5s</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="page">
+        <div class="page-tag">// module_02 · environment_monitor</div>
+        <div class="page-title">Baby <span>Environment</span> Monitor</div>
+
+        <!-- TOP ROW: 3 metric cards -->
+        <div class="top-row">
+            <!-- Temperature -->
+            <div class="metric-card" id="tempCard">
+                <div class="metric-label">// temperature</div>
+                <div class="metric-val safe" id="tempVal">--<span class="metric-unit">°C</span></div>
+                <div class="gauge-wrap">
+                    <div class="gauge">
+                        <div class="gauge-fill" id="tempGauge" style="width:0%;background:var(--safe)"></div>
+                    </div>
+                    <span class="gauge-label" id="tempGaugeLbl">--</span>
+                </div>
+                <div class="metric-status">
+                    <span class="status-badge safe" id="tempBadge">READING...</span>
+                </div>
+                <div class="metric-range">Safe: 24°C – 27°C</div>
+            </div>
+
+            <!-- Humidity -->
+            <div class="metric-card" id="humCard">
+                <div class="metric-label">// humidity</div>
+                <div class="metric-val safe" id="humVal">--<span class="metric-unit">%</span></div>
+                <div class="gauge-wrap">
+                    <div class="gauge">
+                        <div class="gauge-fill" id="humGauge" style="width:0%;background:var(--safe)"></div>
+                    </div>
+                    <span class="gauge-label" id="humGaugeLbl">--</span>
+                </div>
+                <div class="metric-status">
+                    <span class="status-badge safe" id="humBadge">READING...</span>
+                </div>
+                <div class="metric-range">Safe: 40% – 60%</div>
+            </div>
+
+            <!-- Overall status -->
+            <div class="overall-card" id="overallCard">
+                <div class="overall-icon" id="overallIcon">⏳</div>
+                <div class="overall-title" id="overallTitle">Awaiting Data</div>
+                <div class="overall-desc" id="overallDesc">Waiting for first reading from DHT11 sensor...</div>
+            </div>
+        </div>
+
+        <!-- MID ROW: Alerts + Tips -->
+        <div class="mid-row">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-header-title">ACTIVE ALERTS</div>
+                    <span
+                        style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--muted);"
+                        id="alertCount">0 alerts</span>
+                </div>
+                <div class="card-body">
+                    <div class="alerts-area" id="alertsArea">
+                        <div class="alert-row safe">
+                            <div class="alert-icon">✓</div>
+                            <div class="alert-text">
+                                <strong>All Clear</strong>
+                                <span>Waiting for sensor readings...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-header-title">RECOMMENDATIONS</div>
+                </div>
+                <div class="card-body">
+                    <div id="tipsArea" style="display:flex;flex-direction:column;gap:8px;">
+                        <div class="tip-box">Monitoring has started. Recommendations will appear based on sensor
+                            readings.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHARTS -->
+        <div class="mid-row">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-header-title">TEMPERATURE TREND</div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-wrap"><canvas id="tempChart"></canvas></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-header-title">HUMIDITY TREND</div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-wrap"><canvas id="humChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOG TABLE -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-title">DATA LOG</div>
+                <button class="export-btn" onclick="exportCSV()" style="margin-left:auto;">↓ Export CSV</button>
+            </div>
+            <div class="card-body" style="padding:0;">
+                <div class="log-scroll">
+                    <table class="log-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Timestamp</th>
+                                <th>Temp (°C)</th>
+                                <th>Humidity (%)</th>
+                                <th>Temp Status</th>
+                                <th>Hum Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logBody">
+                            <tr>
+                                <td colspan="6"
+                                    style="text-align:center;padding:32px;font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--muted);">
+                                    No readings yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+        // ===== SUPABASE =====
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_KEY = 'YOUR_SUPABASE_KEY';
+        const { createClient } = supabase;
+        let sb;
+        try {
+            sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+            setDot('sbDot', 'green');
+        } catch (e) { setDot('sbDot', 'red-d'); }
+
+        function setDot(id, cls) {
+            const el = document.getElementById(id);
+            if (el) el.className = 'dot ' + cls;
+        }
+
+        // ===== STATE =====
+        const TEMP_MIN = 24, TEMP_MAX = 27;
+        const HUM_MIN = 40, HUM_MAX = 60;
+        let readings = []; // { ts, temp, hum }
+        let countdown = 5;
+
+        // ===== CHART SETUP =====
+        const chartDefaults = {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#3d4a60', font: { family: 'JetBrains Mono', size: 10 } } },
+                y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#3d4a60', font: { family: 'JetBrains Mono', size: 10 } } }
+            },
+            animation: { duration: 500 }
+        };
+
+        const tempCtx = document.getElementById('tempChart').getContext('2d');
+        const tempChart = new Chart(tempCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Temperature (°C)',
+                    data: [],
+                    borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,0.08)',
+                    borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#00d4ff',
+                    tension: 0.4, fill: true
+                }]
+            },
+            options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, min: 15, max: 40 } } }
+        });
+
+        const humCtx = document.getElementById('humChart').getContext('2d');
+        const humChart = new Chart(humCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Humidity (%)',
+                    data: [],
+                    borderColor: '#5e81f4', backgroundColor: 'rgba(94,129,244,0.08)',
+                    borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#5e81f4',
+                    tension: 0.4, fill: true
+                }]
+            },
+            options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, min: 0, max: 100 } } }
+        });
+
+        // ===== CLASSIFY =====
+        function classifyTemp(t) {
+            if (t < TEMP_MIN) return 'cold';
+            if (t > TEMP_MAX) return 'hot';
+            return 'safe';
+        }
+        function classifyHum(h) {
+            if (h < HUM_MIN) return 'dry';
+            if (h > HUM_MAX) return 'humid';
+            return 'safe';
+        }
+        function severity(status) {
+            if (status === 'safe') return 'safe';
+            if (Math.abs(status) < 3) return 'warn';
+            return 'danger';
+        }
+
+        // ===== UI UPDATE =====
+        function updateUI(temp, hum) {
+            const tStatus = classifyTemp(temp);
+            const hStatus = classifyHum(hum);
+
+            // Temp card
+            const tLevel = tStatus === 'safe' ? 'safe' : (Math.abs(temp - (tStatus === 'cold' ? TEMP_MIN : TEMP_MAX)) > 3 ? 'danger' : 'warn');
+            const hLevel = hStatus === 'safe' ? 'safe' : (Math.abs(hum - (hStatus === 'dry' ? HUM_MIN : HUM_MAX)) > 10 ? 'danger' : 'warn');
+
+            setMetric('tempVal', temp.toFixed(1) + '°C', tLevel);
+            setMetric('humVal', hum.toFixed(0) + '%', hLevel);
+
+            document.getElementById('tempCard').className = 'metric-card ' + tLevel;
+            document.getElementById('humCard').className = 'metric-card ' + hLevel;
+
+            setBadge('tempBadge', tStatus === 'safe' ? 'SAFE' : tStatus === 'cold' ? 'TOO COLD' : 'TOO HOT', tLevel);
+            setBadge('humBadge', hStatus === 'safe' ? 'SAFE' : hStatus === 'dry' ? 'TOO DRY' : 'TOO HUMID', hLevel);
+
+            // Gauges
+            const tPct = Math.min(100, Math.max(0, ((temp - 10) / 40) * 100));
+            const hPct = Math.min(100, Math.max(0, hum));
+            setGauge('tempGauge', 'tempGaugeLbl', tPct, tLevel, temp.toFixed(1) + '°C');
+            setGauge('humGauge', 'humGaugeLbl', hPct, hLevel, hum.toFixed(0) + '%');
+
+            // Overall
+            updateOverall(tLevel, hLevel, tStatus, hStatus, temp, hum);
+
+            // Alerts
+            updateAlerts(tStatus, hStatus, tLevel, hLevel, temp, hum);
+
+            // Tips
+            updateTips(tStatus, hStatus);
+
+            // Update ESP status to "online"
+            setDot('espDot', 'green');
+        }
+
+        function setMetric(id, val, level) {
+            const el = document.getElementById(id);
+            // keep the unit span
+            const unit = el.querySelector('.metric-unit');
+            el.className = 'metric-val ' + level;
+            // replace text but keep unit
+            const parts = val.split('°');
+            if (parts.length > 1) {
+                el.innerHTML = parts[0] + '<span class="metric-unit">°' + parts[1] + '</span>';
+            } else {
+                const pct = val.split('%');
+                if (pct.length > 1) {
+                    el.innerHTML = pct[0] + '<span class="metric-unit">%</span>';
+                } else {
+                    el.textContent = val;
+                }
+            }
+        }
+
+        function setBadge(id, text, level) {
+            const el = document.getElementById(id);
+            el.className = 'status-badge ' + level;
+            el.textContent = text;
+        }
+
+        function setGauge(gId, lId, pct, level, label) {
+            const colors = { safe: 'var(--safe)', warn: 'var(--warn)', danger: 'var(--danger)' };
+            document.getElementById(gId).style.width = pct + '%';
+            document.getElementById(gId).style.background = colors[level] || 'var(--safe)';
+            document.getElementById(lId).textContent = label;
+        }
+
+        function updateOverall(tLevel, hLevel, tStatus, hStatus, temp, hum) {
+            const card = document.getElementById('overallCard');
+            const icon = document.getElementById('overallIcon');
+            const title = document.getElementById('overallTitle');
+            const desc = document.getElementById('overallDesc');
+
+            const isAllSafe = tLevel === 'safe' && hLevel === 'safe';
+            const hasDanger = tLevel === 'danger' || hLevel === 'danger';
+
+            if (isAllSafe) {
+                card.style.borderColor = 'rgba(48,209,88,0.3)';
+                card.style.background = 'rgba(48,209,88,0.04)';
+                icon.textContent = '✓';
+                title.textContent = 'Safe for Baby';
+                desc.textContent = `Room is within ideal range. Temp: ${temp.toFixed(1)}°C · Humidity: ${hum.toFixed(0)}%`;
+            } else if (hasDanger) {
+                card.style.borderColor = 'rgba(255,45,85,0.35)';
+                card.style.background = 'rgba(255,45,85,0.04)';
+                icon.textContent = '⚠';
+                title.textContent = 'Warning!';
+                desc.textContent = `Conditions may be unsafe for baby. Immediate attention needed.`;
+            } else {
+                card.style.borderColor = 'rgba(255,159,10,0.3)';
+                card.style.background = 'rgba(255,159,10,0.04)';
+                icon.textContent = '~';
+                title.textContent = 'Moderate';
+                desc.textContent = `Conditions are slightly outside ideal range. Monitor closely.`;
+            }
+        }
+
+        function updateAlerts(tStatus, hStatus, tLevel, hLevel, temp, hum) {
+            const area = document.getElementById('alertsArea');
+            const count = document.getElementById('alertCount');
+            const alerts = [];
+
+            if (tStatus === 'hot') alerts.push({ level: tLevel, icon: '🌡', title: 'High Temperature', desc: `${temp.toFixed(1)}°C — above safe max of ${TEMP_MAX}°C` });
+            if (tStatus === 'cold') alerts.push({ level: tLevel, icon: '❄', title: 'Low Temperature', desc: `${temp.toFixed(1)}°C — below safe min of ${TEMP_MIN}°C` });
+            if (hStatus === 'humid') alerts.push({ level: hLevel, icon: '💧', title: 'High Humidity', desc: `${hum.toFixed(0)}% — above safe max of ${HUM_MAX}%` });
+            if (hStatus === 'dry') alerts.push({ level: hLevel, icon: '🏜', title: 'Low Humidity', desc: `${hum.toFixed(0)}% — below safe min of ${HUM_MIN}%` });
+
+            count.textContent = alerts.length + ' alert' + (alerts.length !== 1 ? 's' : '');
+
+            if (!alerts.length) {
+                area.innerHTML = `<div class="alert-row safe"><div class="alert-icon">✓</div><div class="alert-text"><strong>All Clear</strong><span>All conditions within safe range for baby.</span></div></div>`;
+                return;
+            }
+            area.innerHTML = alerts.map(a => `
+    <div class="alert-row ${a.level}">
+      <div class="alert-icon">${a.icon}</div>
+      <div class="alert-text">
+        <strong>${a.title}</strong>
+        <span>${a.desc}</span>
+      </div>
+    </div>
+  `).join('');
+        }
+
+        function updateTips(tStatus, hStatus) {
+            const area = document.getElementById('tipsArea');
+            const tips = [];
+
+            if (tStatus === 'hot') tips.push('Turn on fan or air conditioning to reduce room temperature.');
+            if (tStatus === 'cold') tips.push('Use warmer clothing for the baby or turn on a safe room heater.');
+            if (hStatus === 'humid') tips.push('Improve ventilation or use a dehumidifier to lower humidity.');
+            if (hStatus === 'dry') tips.push('Use a humidifier or place a bowl of water to increase humidity.');
+            if (tStatus === 'safe' && hStatus === 'safe') tips.push('Room conditions are ideal. Maintain current environment for baby\'s comfort.');
+
+            area.innerHTML = tips.map(t => `<div class="tip-box">${t}</div>`).join('');
+        }
+
+        // ===== READINGS & LOG =====
+        function addReading(temp, hum) {
+            const now = new Date();
+            const ts = now.toLocaleTimeString();
+            const tStatus = classifyTemp(temp);
+            const hStatus = classifyHum(hum);
+            const tLevel = tStatus === 'safe' ? 'safe' : (Math.abs(temp - (tStatus === 'cold' ? TEMP_MIN : TEMP_MAX)) > 3 ? 'danger' : 'warn');
+            const hLevel = hStatus === 'safe' ? 'safe' : (Math.abs(hum - (hStatus === 'dry' ? HUM_MIN : HUM_MAX)) > 10 ? 'danger' : 'warn');
+
+            readings.push({ ts, temp, hum, tStatus, hStatus, tLevel, hLevel });
+            if (readings.length > 200) readings.shift();
+
+            // Charts
+            const label = ts;
+            const MAX_POINTS = 20;
+            if (tempChart.data.labels.length >= MAX_POINTS) {
+                tempChart.data.labels.shift(); tempChart.data.datasets[0].data.shift();
+                humChart.data.labels.shift(); humChart.data.datasets[0].data.shift();
+            }
+            tempChart.data.labels.push(label);
+            tempChart.data.datasets[0].data.push(parseFloat(temp.toFixed(1)));
+            humChart.data.labels.push(label);
+            humChart.data.datasets[0].data.push(parseFloat(hum.toFixed(0)));
+            tempChart.update(); humChart.update();
+
+            // Log table
+            renderLog();
+
+            // Supabase
+            if (sb && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+                sb.from('sensor_readings').insert({ temperature: temp, humidity: hum, timestamp: now.toISOString() })
+                    .then(() => setDot('sbDot', 'green')).catch(() => setDot('sbDot', 'red-d'));
+            }
+        }
+
+        function renderLog() {
+            const tbody = document.getElementById('logBody');
+            if (!readings.length) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;font-family:\'JetBrains Mono\',monospace;font-size:0.75rem;color:var(--muted);">No readings yet.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = [...readings].reverse().map((r, i) => `
+    <tr>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--muted);">${readings.length - i}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--muted);">${r.ts}</td>
+      <td style="font-family:'Orbitron',monospace;font-weight:700;color:${r.tLevel === 'safe' ? 'var(--safe)' : r.tLevel === 'warn' ? 'var(--warn)' : 'var(--danger)'};">${r.temp.toFixed(1)}</td>
+      <td style="font-family:'Orbitron',monospace;font-weight:700;color:${r.hLevel === 'safe' ? 'var(--safe)' : r.hLevel === 'warn' ? 'var(--warn)' : 'var(--danger)'};">${r.hum.toFixed(0)}</td>
+      <td><span class="status-badge ${r.tLevel}">${r.tStatus === 'safe' ? 'SAFE' : r.tStatus === 'cold' ? 'COLD' : 'HOT'}</span></td>
+      <td><span class="status-badge ${r.hLevel}">${r.hStatus === 'safe' ? 'SAFE' : r.hStatus === 'dry' ? 'DRY' : 'HUMID'}</span></td>
+    </tr>
+  `).join('');
+        }
+
+        // ===== CSV EXPORT =====
+        function exportCSV() {
+            if (!readings.length) { showToast('No data to export'); return; }
+            const header = 'Index,Timestamp,Temperature(C),Humidity(%),Temp Status,Humidity Status\n';
+            const rows = readings.map((r, i) =>
+                `${i + 1},${r.ts},${r.temp.toFixed(1)},${r.hum.toFixed(0)},${r.tStatus},${r.hStatus}`
+            ).join('\n');
+            const blob = new Blob([header + rows], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'env_readings_' + Date.now() + '.csv';
+            a.click(); URL.revokeObjectURL(url);
+            showToast('CSV exported!');
+        }
+
+        // ===== TOAST =====
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2500);
+        }
+
+        // ===== MOCK DATA (replace with Supabase realtime fetch) =====
+        function generateMockReading() {
+            // Simulate realistic DHT11 values
+            const temp = 22 + Math.random() * 10; // 22-32
+            const hum = 35 + Math.random() * 35;  // 35-70
+            return { temp, hum };
+        }
+
+        // ===== FETCH FROM SUPABASE =====
+        async function fetchLatest() {
+            if (!sb || SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+                // Use mock data for demo
+                const mock = generateMockReading();
+                updateUI(mock.temp, mock.hum);
+                addReading(mock.temp, mock.hum);
+                setDot('espDot', 'green');
+                setDot('wifiDot', 'green');
+                return;
+            }
+            try {
+                const { data, error } = await sb.from('sensor_readings')
+                    .select('*').order('timestamp', { ascending: false }).limit(1);
+                if (error) throw error;
+                if (data && data.length) {
+                    const r = data[0];
+                    updateUI(r.temperature, r.humidity);
+                    addReading(r.temperature, r.humidity);
+                    setDot('espDot', 'green');
+                    setDot('wifiDot', 'green');
+                }
+            } catch (e) {
+                setDot('espDot', 'red-d');
+            }
+        }
+
+        // ===== POLL TIMER =====
+        let pollCountdown = 5;
+        const nextUpdateEl = document.getElementById('nextUpdate');
+        setInterval(() => {
+            pollCountdown--;
+            nextUpdateEl.textContent = 'Next: ' + pollCountdown + 's';
+            if (pollCountdown <= 0) {
+                pollCountdown = 5;
+                fetchLatest();
+            }
+        }, 1000);
+
+        // Initial fetch
+        fetchLatest();
+    </script>
+</body>
+
+</html>
