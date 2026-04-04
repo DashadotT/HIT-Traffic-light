@@ -9,763 +9,7 @@
         href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400&display=swap"
         rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        :root {
-            --bg: #06080f;
-            --bg2: #0a0d18;
-            --red: #ff2d55;
-            --yellow: #ffcc00;
-            --green: #30d158;
-            --accent: #00f5ff;
-            --text: #e8edf5;
-            --muted: #3d4a60;
-            --card: rgba(255, 255, 255, 0.03);
-            --border: rgba(255, 255, 255, 0.07);
-            --radius: 14px;
-        }
-
-        html {
-            scroll-behavior: smooth;
-        }
-
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Rajdhani', sans-serif;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            background-image:
-                linear-gradient(rgba(0, 245, 255, 0.025) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 245, 255, 0.025) 1px, transparent 1px);
-            background-size: 50px 50px;
-            z-index: 0;
-        }
-
-        /* TOP NAV */
-        .topbar {
-            position: sticky;
-            top: 0;
-            z-index: 200;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 28px;
-            height: 58px;
-            background: rgba(6, 8, 15, 0.9);
-            backdrop-filter: blur(14px);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .topbar-left {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .back-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.75rem;
-            letter-spacing: 0.1em;
-            color: var(--muted);
-            text-decoration: none;
-            text-transform: uppercase;
-            transition: color 0.2s;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .back-btn:hover {
-            color: var(--accent);
-        }
-
-        .topbar-title {
-            font-family: 'Orbitron', monospace;
-            font-size: 0.85rem;
-            font-weight: 800;
-            letter-spacing: 0.15em;
-            color: var(--text);
-        }
-
-        .topbar-right {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .status-pill {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 5px 12px;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--border);
-            border-radius: 999px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.65rem;
-            color: var(--muted);
-            letter-spacing: 0.08em;
-        }
-
-        .dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        .dot.green {
-            background: #22c55e;
-            box-shadow: 0 0 6px #22c55e;
-        }
-
-        .dot.yellow {
-            background: #eab308;
-            box-shadow: 0 0 6px #eab308;
-        }
-
-        .dot.red-d {
-            background: var(--red);
-            box-shadow: 0 0 6px var(--red);
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.3;
-            }
-        }
-
-        /* LAYOUT */
-        .page {
-            position: relative;
-            z-index: 1;
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 28px 20px 60px;
-        }
-
-        /* PAGE HEADER */
-        .page-header {
-            margin-bottom: 28px;
-        }
-
-        .page-tag {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.65rem;
-            color: var(--accent);
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-
-        .page-title {
-            font-family: 'Orbitron', monospace;
-            font-size: clamp(1.6rem, 4vw, 2.6rem);
-            font-weight: 900;
-        }
-
-        .page-title span {
-            color: var(--green);
-            text-shadow: 0 0 30px var(--green);
-        }
-
-        /* GRID LAYOUT */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            grid-template-rows: auto auto;
-            gap: 20px;
-        }
-
-        @media(max-width:900px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* CARD */
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            overflow: hidden;
-        }
-
-        .card-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .card-header-title {
-            font-family: 'Orbitron', monospace;
-            font-size: 0.75rem;
-            font-weight: 700;
-            letter-spacing: 0.12em;
-        }
-
-        .card-body {
-            padding: 20px;
-        }
-
-        /* TRAFFIC LIGHT VISUAL */
-        .tl-housing {
-            background: #0d1117;
-            border: 2px solid #1e2535;
-            border-radius: 22px;
-            width: 110px;
-            margin: 0 auto 20px;
-            padding: 16px 18px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-            position: relative;
-        }
-
-        .tl-housing::before {
-            content: '';
-            position: absolute;
-            top: -28px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 12px;
-            height: 28px;
-            background: #1a2030;
-            border-radius: 2px;
-        }
-
-        .led {
-            width: 68px;
-            height: 68px;
-            border-radius: 50%;
-            margin: 0 auto;
-            position: relative;
-            transition: all 0.4s ease;
-            background: #141820;
-            border: 2px solid #1e2535;
-        }
-
-        .led::after {
-            content: '';
-            position: absolute;
-            top: 10px;
-            left: 12px;
-            width: 20px;
-            height: 14px;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 50%;
-            transform: rotate(-30deg);
-        }
-
-        .led.active-red {
-            background: var(--red);
-            box-shadow: 0 0 30px var(--red), 0 0 80px rgba(255, 45, 85, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.15);
-        }
-
-        .led.active-yellow {
-            background: var(--yellow);
-            box-shadow: 0 0 30px var(--yellow), 0 0 80px rgba(255, 204, 0, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.15);
-        }
-
-        .led.active-green {
-            background: var(--green);
-            box-shadow: 0 0 30px var(--green), 0 0 80px rgba(48, 209, 88, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.15);
-        }
-
-        /* COUNTDOWN */
-        .countdown-wrap {
-            text-align: center;
-            margin-bottom: 16px;
-        }
-
-        .countdown-num {
-            font-family: 'Orbitron', monospace;
-            font-size: 5rem;
-            font-weight: 900;
-            line-height: 1;
-            transition: color 0.4s;
-        }
-
-        .countdown-num.red {
-            color: var(--red);
-            text-shadow: 0 0 30px rgba(255, 45, 85, 0.5);
-        }
-
-        .countdown-num.yellow {
-            color: var(--yellow);
-            text-shadow: 0 0 30px rgba(255, 204, 0, 0.5);
-        }
-
-        .countdown-num.green {
-            color: var(--green);
-            text-shadow: 0 0 30px rgba(48, 209, 88, 0.5);
-        }
-
-        .phase-label {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem;
-            letter-spacing: 0.2em;
-            margin-top: 4px;
-            text-transform: uppercase;
-        }
-
-        .phase-label.red {
-            color: var(--red);
-        }
-
-        .phase-label.yellow {
-            color: var(--yellow);
-        }
-
-        .phase-label.green {
-            color: var(--green);
-        }
-
-        /* PROGRESS BAR */
-        .progress-track {
-            height: 4px;
-            background: rgba(255, 255, 255, 0.07);
-            border-radius: 99px;
-            overflow: hidden;
-            margin-top: 12px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            border-radius: 99px;
-            transition: width 1s linear, background 0.4s;
-        }
-
-        .progress-fill.red {
-            background: var(--red);
-        }
-
-        .progress-fill.yellow {
-            background: var(--yellow);
-        }
-
-        .progress-fill.green {
-            background: var(--green);
-        }
-
-        /* CONTROLS */
-        .controls-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        .ctrl-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            padding: 16px 8px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            cursor: pointer;
-            font-family: 'Rajdhani', sans-serif;
-            transition: all 0.2s;
-            color: var(--text);
-            font-size: 0.75rem;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            font-weight: 600;
-        }
-
-        .ctrl-btn:hover {
-            border-color: var(--accent);
-            background: rgba(0, 245, 255, 0.05);
-        }
-
-        .ctrl-btn.active {
-            border-color: var(--accent);
-            background: rgba(0, 245, 255, 0.08);
-            color: var(--accent);
-        }
-
-        .ctrl-btn.danger {
-            border-color: rgba(255, 45, 85, 0.4);
-        }
-
-        .ctrl-btn.danger:hover {
-            border-color: var(--red);
-            background: rgba(255, 45, 85, 0.08);
-        }
-
-        .ctrl-icon {
-            font-size: 1.3rem;
-        }
-
-        /* LED TOGGLES */
-        .led-toggles {
-            display: flex;
-            gap: 8px;
-        }
-
-        .led-toggle {
-            flex: 1;
-            padding: 14px 4px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: rgba(255, 255, 255, 0.02);
-            cursor: pointer;
-            text-align: center;
-            font-size: 0.7rem;
-            letter-spacing: 0.07em;
-            font-family: 'JetBrains Mono', monospace;
-            transition: all 0.25s;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .led-toggle .indicator {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            border: 2px solid currentColor;
-            transition: all 0.25s;
-        }
-
-        .led-toggle.red-t {
-            color: var(--red);
-        }
-
-        .led-toggle.yellow-t {
-            color: var(--yellow);
-        }
-
-        .led-toggle.green-t {
-            color: var(--green);
-        }
-
-        .led-toggle.on .indicator {
-            background: currentColor;
-            box-shadow: 0 0 14px currentColor;
-        }
-
-        .led-toggle:hover {
-            border-color: currentColor;
-            background: rgba(255, 255, 255, 0.04);
-        }
-
-        /* BUILTIN LED */
-        .builtin-btn {
-            width: 100%;
-            padding: 14px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: rgba(255, 255, 255, 0.02);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-family: 'Rajdhani', sans-serif;
-            font-size: 0.85rem;
-            font-weight: 600;
-            letter-spacing: 0.06em;
-            color: var(--text);
-            text-transform: uppercase;
-            transition: all 0.25s;
-        }
-
-        .builtin-btn:hover {
-            border-color: var(--accent);
-            background: rgba(0, 245, 255, 0.05);
-        }
-
-        .builtin-btn.on {
-            border-color: var(--accent);
-            background: rgba(0, 245, 255, 0.08);
-            color: var(--accent);
-        }
-
-        .builtin-led-indicator {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            border: 2px solid var(--muted);
-            transition: all 0.25s;
-        }
-
-        .builtin-btn.on .builtin-led-indicator {
-            background: var(--accent);
-            border-color: var(--accent);
-            box-shadow: 0 0 12px var(--accent);
-        }
-
-        /* HISTORY LOG */
-        .log-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.82rem;
-        }
-
-        .log-table th {
-            padding: 10px 14px;
-            text-align: left;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.65rem;
-            letter-spacing: 0.1em;
-            color: var(--muted);
-            text-transform: uppercase;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .log-table td {
-            padding: 10px 14px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-        }
-
-        .log-table tbody tr:hover {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .log-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 3px 10px;
-            border-radius: 99px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.65rem;
-            font-weight: 600;
-            letter-spacing: 0.08em;
-        }
-
-        .log-badge.RED {
-            background: rgba(255, 45, 85, 0.15);
-            color: var(--red);
-            border: 1px solid rgba(255, 45, 85, 0.3);
-        }
-
-        .log-badge.YELLOW {
-            background: rgba(255, 204, 0, 0.15);
-            color: var(--yellow);
-            border: 1px solid rgba(255, 204, 0, 0.3);
-        }
-
-        .log-badge.GREEN {
-            background: rgba(48, 209, 88, 0.15);
-            color: var(--green);
-            border: 1px solid rgba(48, 209, 88, 0.3);
-        }
-
-        .log-badge.SYSTEM {
-            background: rgba(0, 245, 255, 0.1);
-            color: var(--accent);
-            border: 1px solid rgba(0, 245, 255, 0.25);
-        }
-
-        .log-time {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.72rem;
-            color: var(--muted);
-        }
-
-        .log-scroll {
-            max-height: 360px;
-            overflow-y: auto;
-        }
-
-        .log-scroll::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .log-scroll::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .log-scroll::-webkit-scrollbar-thumb {
-            background: var(--muted);
-            border-radius: 99px;
-        }
-
-        /* DIVIDER */
-        .section-divider {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
-        }
-
-        .section-divider span {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.65rem;
-            color: var(--muted);
-            white-space: nowrap;
-            letter-spacing: 0.1em;
-        }
-
-        .section-divider::before,
-        .section-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border);
-        }
-
-        /* TOAST */
-        #toast {
-            position: fixed;
-            bottom: 28px;
-            right: 28px;
-            z-index: 9999;
-            background: rgba(10, 13, 24, 0.95);
-            border: 1px solid var(--border);
-            padding: 14px 20px;
-            border-radius: 10px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.78rem;
-            color: var(--accent);
-            backdrop-filter: blur(12px);
-            transform: translateY(20px);
-            opacity: 0;
-            transition: all 0.3s;
-            pointer-events: none;
-            max-width: 300px;
-        }
-
-        #toast.show {
-            transform: translateY(0);
-            opacity: 1;
-        }
-
-        .right-col {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        /* TOGGLE SWITCH */
-        .toggle-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px 20px;
-        }
-
-        .toggle-label {
-            font-size: 0.9rem;
-            font-weight: 600;
-            letter-spacing: 0.05em;
-        }
-
-        .toggle-sub {
-            font-size: 0.75rem;
-            color: var(--muted);
-        }
-
-        .toggle {
-            width: 50px;
-            height: 26px;
-            background: var(--muted);
-            border-radius: 99px;
-            cursor: pointer;
-            position: relative;
-            transition: background 0.25s;
-        }
-
-        .toggle.on {
-            background: var(--green);
-            box-shadow: 0 0 12px rgba(48, 209, 88, 0.4);
-        }
-
-        .toggle::after {
-            content: '';
-            position: absolute;
-            top: 3px;
-            left: 3px;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: white;
-            transition: left 0.25s;
-        }
-
-        .toggle.on::after {
-            left: 27px;
-        }
-
-        /* PHASE TIMELINE */
-        .phase-timeline {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 4px;
-        }
-
-        .phase-seg {
-            flex: 1;
-            padding: 10px 8px;
-            border-radius: 8px;
-            text-align: center;
-            border: 1px solid var(--border);
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .phase-seg.active-seg {
-            border-color: currentColor;
-        }
-
-        .phase-seg .seg-label {
-            font-size: 0.65rem;
-            font-family: 'JetBrains Mono', monospace;
-            letter-spacing: 0.06em;
-        }
-
-        .phase-seg .seg-dur {
-            font-family: 'Orbitron', monospace;
-            font-size: 0.9rem;
-            font-weight: 700;
-        }
-
-        .phase-seg.r {
-            color: var(--red);
-        }
-
-        .phase-seg.y {
-            color: var(--yellow);
-        }
-
-        .phase-seg.g {
-            color: var(--green);
-        }
-
-        .empty-log {
-            text-align: center;
-            padding: 40px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            color: var(--muted);
-        }
-    </style>
+    <link rel="stylesheet" href="traffic.css">
 </head>
 
 <body>
@@ -950,8 +194,8 @@
 
     <script>
         // ===== SUPABASE CONFIG =====
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-        const SUPABASE_KEY = 'YOUR_SUPABASE_KEY';
+        const SUPABASE_URL = 'https://lsoordaciwrwrevvxrbh.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxzb29yZGFjaXdyd3JldnZ4cmJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTk3MDgsImV4cCI6MjA5MDI3NTcwOH0.KMm0yqK2EvZtBxveVumdCZMjIMuiVlZYKfX0i9hA8dI';
         const { createClient } = supabase;
         let sb;
         try {
@@ -1117,23 +361,40 @@
 
         // ===== SUPABASE COMMANDS =====
         async function sendCommand(cmd, extra = {}) {
-            if (!sb || SUPABASE_URL === 'YOUR_SUPABASE_URL') return;
+            if (!sb) return;
             try {
                 await sb.from('traffic_commands').insert({
-                    command: cmd, payload: extra, created_at: new Date().toISOString(), consumed: false
+                    command: cmd,
+                    payload: extra,
+                    created_at: new Date().toISOString(),
+                    consumed: false
                 });
                 showToast('Command: ' + cmd);
                 updateStatus('sb', 'green', 'Supabase');
             } catch (e) {
                 updateStatus('sb', 'red', 'Supabase');
+                console.error('Command error:', e);
             }
         }
 
         async function sendPhaseToSupabase(phase) {
-            if (!sb || SUPABASE_URL === 'YOUR_SUPABASE_URL') return;
+            if (!sb) return;
             try {
-                await sb.from('traffic_state').upsert({ id: 1, phase, countdown, updated_at: new Date().toISOString() });
-            } catch (e) { }
+                // Use upsert with match on id=1 for traffic_state
+                const { error } = await sb
+                    .from('traffic_state')
+                    .upsert({
+                        id: 1,
+                        phase: phase,
+                        countdown: countdown,
+                        updated_at: new Date().toISOString()
+                    }, {
+                        onConflict: 'id'
+                    });
+                if (error) console.error('Phase update error:', error);
+            } catch (e) {
+                console.error('Phase update exception:', e);
+            }
         }
 
         // ===== MANUAL LED =====
@@ -1195,7 +456,11 @@
             // Map force commands
             if (cmd === 'force_red' || cmd === 'force_yellow' || cmd === 'force_green') {
                 const phase = cmd.split('_')[1];
-                if (!systemOn) { systemOn = true; document.getElementById('powerToggle').classList.add('on'); document.getElementById('systemStatusTxt').textContent = 'System is ON'; }
+                if (!systemOn) {
+                    systemOn = true;
+                    document.getElementById('powerToggle').classList.add('on');
+                    document.getElementById('systemStatusTxt').textContent = 'System is ON';
+                }
                 clearManualUI();
                 startPhase(phase);
             } else if (cmd === 'all_off') {
@@ -1209,14 +474,19 @@
                 addLog('SYSTEM', 'All LEDs turned off');
             }
         }
+
         // Override sendCommand for force buttons
         window.sendCommand = function (cmd, extra = {}) {
             if (['force_red', 'force_yellow', 'force_green', 'all_off'].includes(cmd)) {
-                sendCommandOrig(cmd); return;
+                sendCommandOrig(cmd);
+                return;
             }
-            if (!sb || SUPABASE_URL === 'YOUR_SUPABASE_URL') { showToast(cmd); return; }
+            if (!sb) { showToast(cmd); return; }
             sb.from('traffic_commands').insert({
-                command: cmd, payload: extra, created_at: new Date().toISOString(), consumed: false
+                command: cmd,
+                payload: extra,
+                created_at: new Date().toISOString(),
+                consumed: false
             }).then(() => {
                 showToast('→ ' + cmd);
                 updateStatus('sb', 'green', 'Supabase');
