@@ -36,7 +36,7 @@ const char* password = "123456789";
 // ============================================================
 // SUPABASE CONFIG
 // ============================================================
-const char* supabaseUrl = "https://lsoordaciwrwrevvxrbh.supabase.co";  // e.g. https://xxxx.supabase.co
+const char* supabaseUrl = "https://lsoordaciwrwrevvxrbh.supabase.co";                                                                                                                                                                          // e.g. https://xxxx.supabase.co
 const char* supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxzb29yZGFjaXdyd3JldnZ4cmJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTk3MDgsImV4cCI6MjA5MDI3NTcwOH0.KMm0yqK2EvZtBxveVumdCZMjIMuiVlZYKfX0i9hA8dI";  // anon/service key
 
 // ============================================================
@@ -60,6 +60,13 @@ bool systemOn = false;
 bool builtinLedOn = false;
 String currentLed = "none";  // red | yellow | green | none
 String activeMode = "idle";  // idle | auto | manual | builtin
+
+// Auto cycle timing
+unsigned long lastPhaseChange = 0;
+int phaseIndex = 0;
+
+String phases[] = { "red", "yellow", "green" };
+int durations[] = { 30000, 10000, 30000 };  // ms
 
 // DHT timing
 unsigned long lastDhtRead = 0;
@@ -92,7 +99,7 @@ void warnBuzzer() {
   // Long beep for baby environment warning
   beep(800, 400);
   delay(100);
-  beep(800, 400); 
+  beep(800, 400);
 }
 
 // ============================================================
@@ -232,7 +239,12 @@ void processCommand(String command, String value) {
     if (value == "on") {
       systemOn = true;
       activeMode = "auto";
-      Serial.println("[System] ON");
+
+      phaseIndex = 0;
+      lastPhaseChange = millis();
+      setLed(phases[phaseIndex]);
+
+      Serial.println("[System] ON (AUTO MODE)");
     } else {
       systemOn = false;
       activeMode = "idle";
@@ -244,6 +256,7 @@ void processCommand(String command, String value) {
 
   else if (command == "led") {
     if (!systemOn) return;
+
     if (value == "off") {
       allLedsOff();
       currentLed = "none";
@@ -257,6 +270,7 @@ void processCommand(String command, String value) {
 
   else if (command == "builtin_led") {
     if (!systemOn) return;
+
     bool on = (value == "on");
     digitalWrite(PIN_BUILTIN, on ? HIGH : LOW);
     builtinLedOn = on;
@@ -294,6 +308,22 @@ void readDHT() {
   }
 }
 
+void runAutoCycle() {
+  if (!systemOn || activeMode != "auto") return;
+
+  unsigned long now = millis();
+
+  if (now - lastPhaseChange >= durations[phaseIndex]) {
+    phaseIndex = (phaseIndex + 1) % 3;
+    lastPhaseChange = now;
+
+    String phase = phases[phaseIndex];
+    setLed(phase);
+
+    Serial.println("[AUTO] Phase: " + phase);
+    alertBuzzer();
+  }
+}
 // ============================================================
 // SETUP
 // ============================================================
@@ -352,6 +382,8 @@ void loop() {
     lastDhtRead = now;
     readDHT();
   }
+
+  runAutoCycle();
 
   delay(50);  // Small yield
 }
