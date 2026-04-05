@@ -1,84 +1,121 @@
 -- ============================================================
---  SmartNode — Supabase SQL Setup
+--  SmartNode — Supabase SQL Setup (Simple Integer IDs)
 --  Run this once in your Supabase SQL Editor
 -- ============================================================
--- 1. TRAFFIC STATE
-CREATE TABLE
-    IF NOT EXISTS traffic_state (
-        id INT PRIMARY KEY DEFAULT 1,
-        phase TEXT DEFAULT 'off',
-        countdown INT DEFAULT 0,
-        updated_at TIMESTAMPTZ DEFAULT NOW ()
+-- 1. TRAFFIC STATE (with fixed ID 1)
+create table
+    if not exists traffic_state (
+        id INT primary key default 1,
+        phase TEXT default 'off',
+        countdown INT default 0,
+        updated_at TIMESTAMPTZ default NOW ()
     );
 
-INSERT INTO
-    traffic_state (id, phase, countdown)
-VALUES
-    (1, 'off', 0) ON CONFLICT (id) DO NOTHING;
+-- Clear any existing data and insert default
+delete from traffic_state;
 
--- 2. TRAFFIC COMMANDS (dashboard → ESP32)
-CREATE TABLE
-    IF NOT EXISTS traffic_commands (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
-        command TEXT NOT NULL,
-        payload JSONB DEFAULT '{}',
-        consumed BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMPTZ DEFAULT NOW ()
+insert into
+    traffic_state (id, phase, countdown, updated_at)
+values
+    (1, 'off', 0, NOW ());
+
+-- 2. TRAFFIC COMMANDS (dashboard → ESP32) - Using SERIAL for auto-increment
+create table
+    if not exists traffic_commands (
+        id SERIAL primary key,
+        command TEXT not null,
+        payload JSONB default '{}',
+        consumed BOOLEAN default false,
+        created_at TIMESTAMPTZ default NOW ()
     );
 
-CREATE INDEX IF NOT EXISTS idx_cmds_consumed ON traffic_commands (consumed);
+create index IF not exists idx_cmds_consumed on traffic_commands (consumed);
 
--- 3. TRAFFIC EVENT LOG
-CREATE TABLE
-    IF NOT EXISTS traffic_logs (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+create index IF not exists idx_cmds_created on traffic_commands (created_at);
+
+-- 3. TRAFFIC EVENT LOG - Using SERIAL for auto-increment
+create table
+    if not exists traffic_logs (
+        id SERIAL primary key,
         event TEXT,
         details TEXT,
         phase TEXT,
-        timestamp TIMESTAMPTZ DEFAULT NOW ()
+        timestamp TIMESTAMPTZ default NOW ()
     );
 
--- 4. DHT11 SENSOR READINGS
-CREATE TABLE
-    IF NOT EXISTS sensor_readings (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+-- 4. DHT11 SENSOR READINGS - Using SERIAL for auto-increment
+create table
+    if not exists sensor_readings (
+        id SERIAL primary key,
         temperature FLOAT,
         humidity FLOAT,
-        timestamp TIMESTAMPTZ DEFAULT NOW ()
+        timestamp TIMESTAMPTZ default NOW ()
     );
 
 -- ============================================================
 --  ENABLE REALTIME
 -- ============================================================
-ALTER PUBLICATION supabase_realtime ADD TABLE traffic_commands;
+alter publication supabase_realtime add table traffic_commands;
 
-ALTER PUBLICATION supabase_realtime ADD TABLE traffic_state;
+alter publication supabase_realtime add table traffic_state;
 
-ALTER PUBLICATION supabase_realtime ADD TABLE sensor_readings;
+alter publication supabase_realtime add table sensor_readings;
+
+alter publication supabase_realtime add table traffic_logs;
 
 -- ============================================================
 --  ROW LEVEL SECURITY (open for ESP32 anon key access)
 -- ============================================================
-ALTER TABLE traffic_state ENABLE ROW LEVEL SECURITY;
+alter table traffic_state ENABLE row LEVEL SECURITY;
 
-ALTER TABLE traffic_commands ENABLE ROW LEVEL SECURITY;
+alter table traffic_commands ENABLE row LEVEL SECURITY;
 
-ALTER TABLE traffic_logs ENABLE ROW LEVEL SECURITY;
+alter table traffic_logs ENABLE row LEVEL SECURITY;
 
-ALTER TABLE sensor_readings ENABLE ROW LEVEL SECURITY;
+alter table sensor_readings ENABLE row LEVEL SECURITY;
 
-CREATE POLICY "open_traffic_state" ON traffic_state FOR ALL USING (true)
-WITH
-    CHECK (true);
+drop policy IF exists "open_traffic_state" on traffic_state;
 
-CREATE POLICY "open_traffic_commands" ON traffic_commands FOR ALL USING (true)
-WITH
-    CHECK (true);
+drop policy IF exists "open_traffic_commands" on traffic_commands;
 
-CREATE POLICY "open_traffic_logs" ON traffic_logs FOR ALL USING (true)
-WITH
-    CHECK (true);
+drop policy IF exists "open_traffic_logs" on traffic_logs;
 
-CREATE POLICY "open_sensor_readings" ON sensor_readings FOR ALL USING (true)
-WITH
-    CHECK (true);
+drop policy IF exists "open_sensor_readings" on sensor_readings;
+
+create policy "open_traffic_state" on traffic_state for all using (true)
+with
+    check (true);
+
+create policy "open_traffic_commands" on traffic_commands for all using (true)
+with
+    check (true);
+
+create policy "open_traffic_logs" on traffic_logs for all using (true)
+with
+    check (true);
+
+create policy "open_sensor_readings" on sensor_readings for all using (true)
+with
+    check (true);
+
+-- ============================================================
+--  OPTIONAL: Create a view for easy monitoring
+-- ============================================================
+create
+or replace view traffic_status as
+select
+    ts.phase,
+    ts.countdown,
+    ts.updated_at as state_updated,
+    COUNT(tc.id) filter (
+        where
+            tc.consumed = false
+    ) as pending_commands
+from
+    traffic_state ts
+    left join traffic_commands tc on tc.consumed = false
+group by
+    ts.id,
+    ts.phase,
+    ts.countdown,
+    ts.updated_at;
