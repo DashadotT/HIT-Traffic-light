@@ -183,6 +183,129 @@
             if (el) el.className = 'dot ' + cls;
         }
 
+        // ===== ACTIVE DASHBOARD MANAGEMENT =====
+        let isActiveDashboard = false;
+        let pollInterval = null;
+
+        async function checkAndActivateDashboard() {
+            if (!sb) return false;
+
+            try {
+                // Check current active dashboard
+                const { data, error } = await sb
+                    .from('active_dashboard')
+                    .select('dashboard')
+                    .eq('id', 1)
+                    .single();
+
+                if (error) throw error;
+
+                // If traffic is active, don't allow sensor readings
+                if (data.dashboard === 'traffic') {
+                    showToast('⚠️ Traffic Dashboard is active. Please close it first.', true);
+                    return false;
+                }
+
+                // If no active dashboard or temphum is already active
+                if (data.dashboard === 'temphum') {
+                    isActiveDashboard = true;
+                    return true;
+                }
+
+                // Activate temphum dashboard
+                if (data.dashboard === 'none' || data.dashboard !== 'temphum') {
+                    const { error: updateError } = await sb
+                        .from('active_dashboard')
+                        .update({ dashboard: 'temphum', updated_at: new Date().toISOString() })
+                        .eq('id', 1);
+
+                    if (updateError) throw updateError;
+                    isActiveDashboard = true;
+                    showToast('✓ Environment Monitor Activated');
+                    return true;
+                }
+
+                return true;
+            } catch (e) {
+                console.error('Dashboard activation error:', e);
+                showToast('Error activating dashboard', true);
+                return false;
+            }
+        }
+
+        async function deactivateDashboard() {
+            if (!sb || !isActiveDashboard) return;
+
+            try {
+                const { data, error } = await sb
+                    .from('active_dashboard')
+                    .select('dashboard')
+                    .eq('id', 1)
+                    .single();
+
+                if (error) throw error;
+
+                // Only deactivate if this dashboard is still the active one
+                if (data.dashboard === 'temphum') {
+                    await sb
+                        .from('active_dashboard')
+                        .update({ dashboard: 'none', updated_at: new Date().toISOString() })
+                        .eq('id', 1);
+                    isActiveDashboard = false;
+                }
+            } catch (e) {
+                console.error('Dashboard deactivation error:', e);
+            }
+        }
+
+        // Add page visibility and unload handlers
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && isActiveDashboard) {
+                deactivateDashboard();
+                if (pollInterval) {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                }
+            } else if (!document.hidden && !isActiveDashboard) {
+                checkAndActivateDashboard().then(activated => {
+                    if (activated && !pollInterval) {
+                        // Restart polling
+                        pollInterval = setInterval(() => {
+                            if (isActiveDashboard) fetchLatest();
+                        }, 5000);
+                    }
+                });
+            }
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (isActiveDashboard && sb) {
+                sb.from('active_dashboard')
+                    .update({ dashboard: 'none', updated_at: new Date().toISOString() })
+                    .eq('id', 1)
+                    .then(() => console.log('Dashboard deactivated on unload'));
+            }
+        });
+
+        // Modify your existing fetchLatest and polling
+        const originalFetchLatest = fetchLatest;
+        window.fetchLatest = async function () {
+            if (!isActiveDashboard) return;
+            originalFetchLatest();
+        };
+
+        // Initialize - check activation on page load
+        window.addEventListener('load', async () => {
+            const activated = await checkAndActivateDashboard();
+            if (activated) {
+                // Start polling
+                pollInterval = setInterval(() => {
+                    if (isActiveDashboard) fetchLatest();
+                }, 5000);
+                fetchLatest();
+            }
+        });
+
         // ===== STATE =====
         const TEMP_MIN = 24, TEMP_MAX = 27;
         const HUM_MIN = 40, HUM_MAX = 60;

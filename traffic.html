@@ -944,6 +944,130 @@
         const PHASES = { red: 30, yellow: 10, green: 30 };
         const PHASE_ORDER = ['red', 'yellow', 'green'];
 
+        // ===== ACTIVE DASHBOARD MANAGEMENT =====
+        let isActiveDashboard = false;
+
+        async function checkAndActivateDashboard() {
+            if (!sb) return false;
+
+            try {
+                // Check current active dashboard
+                const { data, error } = await sb
+                    .from('active_dashboard')
+                    .select('dashboard')
+                    .eq('id', 1)
+                    .single();
+
+                if (error) throw error;
+
+                // If temphum is active, don't allow traffic commands
+                if (data.dashboard === 'temphum') {
+                    showToast('⚠️ Temperature & Humidity Dashboard is active. Please close it first.', true);
+                    return false;
+                }
+
+                // If no active dashboard or traffic is already active
+                if (data.dashboard === 'traffic') {
+                    isActiveDashboard = true;
+                    return true;
+                }
+
+                // Activate traffic dashboard
+                if (data.dashboard === 'none' || data.dashboard !== 'traffic') {
+                    const { error: updateError } = await sb
+                        .from('active_dashboard')
+                        .update({ dashboard: 'traffic', updated_at: new Date().toISOString() })
+                        .eq('id', 1);
+
+                    if (updateError) throw updateError;
+                    isActiveDashboard = true;
+                    showToast('✓ Traffic Dashboard Activated');
+                    return true;
+                }
+
+                return true;
+            } catch (e) {
+                console.error('Dashboard activation error:', e);
+                showToast('Error activating dashboard', true);
+                return false;
+            }
+        }
+
+        async function deactivateDashboard() {
+            if (!sb || !isActiveDashboard) return;
+
+            try {
+                const { data, error } = await sb
+                    .from('active_dashboard')
+                    .select('dashboard')
+                    .eq('id', 1)
+                    .single();
+
+                if (error) throw error;
+
+                // Only deactivate if this dashboard is still the active one
+                if (data.dashboard === 'traffic') {
+                    await sb
+                        .from('active_dashboard')
+                        .update({ dashboard: 'none', updated_at: new Date().toISOString() })
+                        .eq('id', 1);
+
+                    // Send system off command to ESP32
+                    await sendCommandWithRetry('system_off');
+                    isActiveDashboard = false;
+                }
+            } catch (e) {
+                console.error('Dashboard deactivation error:', e);
+            }
+        }
+
+        // Add page visibility and unload handlers
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && isActiveDashboard) {
+                deactivateDashboard();
+            }
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (isActiveDashboard) {
+                // Use synchronous approach for beforeunload
+                if (sb) {
+                    sb.from('active_dashboard')
+                        .update({ dashboard: 'none', updated_at: new Date().toISOString() })
+                        .eq('id', 1)
+                        .then(() => console.log('Dashboard deactivated on unload'));
+                }
+            }
+        });
+
+        // Modify your existing toggleSystem function to check activation first
+        const originalToggleSystem = toggleSystem;
+        window.toggleSystem = async function () {
+            if (!systemOn && !isActiveDashboard) {
+                const activated = await checkAndActivateDashboard();
+                if (!activated) return;
+            }
+            originalToggleSystem();
+        };
+
+        // Modify sendCommandWrapper
+        const originalSendCommandWrapper = sendCommandWrapper;
+        window.sendCommandWrapper = async function (cmd) {
+            if (!isActiveDashboard) {
+                const activated = await checkAndActivateDashboard();
+                if (!activated) return;
+            }
+            originalSendCommandWrapper(cmd);
+        };
+
+        // Initialize - check activation on page load
+        window.addEventListener('load', async () => {
+            await checkAndActivateDashboard();
+            // Start polling ESP status
+            setInterval(pollESPStatus, 10000);
+            pollESPStatus();
+        });
+
         // ===== STATUS BAR =====
         function updateStatus(type, color) {
             const map = { sb: 'sbDot', wifi: 'wifiDot', esp: 'espDot' };
