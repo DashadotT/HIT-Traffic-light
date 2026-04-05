@@ -3,1410 +3,505 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes" />
-    <title>Traffic Control — SmartNode</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Traffic Light Control — SmartIoT</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
-        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400&display=swap"
-        rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        :root {
-            --bg: #06080f;
-            --bg2: #0a0d18;
-            --red: #ff2d55;
-            --yellow: #ffcc00;
-            --green: #30d158;
-            --accent: #00f5ff;
-            --text: #e8edf5;
-            --muted: #3d4a60;
-            --card: rgba(255, 255, 255, 0.03);
-            --border: rgba(255, 255, 255, 0.07);
-            --radius: 14px;
-        }
-
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Rajdhani', sans-serif;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            background-image: linear-gradient(rgba(0, 245, 255, 0.025) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 245, 255, 0.025) 1px, transparent 1px);
-            background-size: 50px 50px;
-            z-index: 0;
-        }
-
-        /* TOPBAR */
-        .topbar {
-            position: sticky;
-            top: 0;
-            z-index: 200;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 16px;
-            height: 58px;
-            background: rgba(6, 8, 15, 0.95);
-            backdrop-filter: blur(14px);
-            border-bottom: 1px solid var(--border);
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        @media (min-width: 768px) {
-            .topbar {
-                padding: 0 28px;
-            }
-        }
-
-        .topbar-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .back-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.7rem;
-            letter-spacing: 0.1em;
-            color: var(--muted);
-            text-decoration: none;
-            text-transform: uppercase;
-            transition: color 0.2s;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .back-btn:hover {
-            color: var(--accent);
-        }
-
-        .topbar-title {
-            font-family: 'Orbitron', monospace;
-            font-size: 0.8rem;
-            font-weight: 800;
-            letter-spacing: 0.15em;
-            color: var(--text);
-        }
-
-        .topbar-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .status-pill {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--border);
-            border-radius: 999px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.6rem;
-            color: var(--muted);
-            letter-spacing: 0.08em;
-        }
-
-        .dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        .dot.green {
-            background: #22c55e;
-            box-shadow: 0 0 6px #22c55e;
-        }
-
-        .dot.yellow {
-            background: #eab308;
-            box-shadow: 0 0 6px #eab308;
-        }
-
-        .dot.red-d {
-            background: var(--red);
-            box-shadow: 0 0 6px var(--red);
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.3;
-            }
-        }
-
-        /* LAYOUT */
-        .page {
-            position: relative;
-            z-index: 1;
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 20px 16px 60px;
-        }
-
-        @media (min-width: 768px) {
-            .page {
-                padding: 28px 20px 60px;
-            }
-        }
-
-        .page-header {
-            margin-bottom: 20px;
-        }
-
-        .page-tag {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.6rem;
-            color: var(--accent);
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-
-        .page-title {
-            font-family: 'Orbitron', monospace;
-            font-size: clamp(1.4rem, 5vw, 2.6rem);
-            font-weight: 900;
-        }
-
-        .page-title span {
-            color: var(--green);
-            text-shadow: 0 0 30px var(--green);
-        }
-
-        /* GRID */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
-
-        @media (min-width: 900px) {
-            .main-grid {
-                grid-template-columns: 360px 1fr;
-            }
-        }
-
-        /* CARDS */
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            overflow: hidden;
-        }
-
-        .card-header {
-            padding: 14px 16px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .card-header-title {
-            font-family: 'Orbitron', monospace;
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.12em;
-        }
-
-        .card-body {
-            padding: 16px;
-        }
-
-        /* TRAFFIC LIGHT */
-        .tl-housing {
-            background: #0d1117;
-            border: 2px solid #1e2535;
-            border-radius: 22px;
-            width: 100px;
-            margin: 0 auto 20px;
-            padding: 14px 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-            position: relative;
-        }
-
-        .tl-housing::before {
-            content: '';
-            position: absolute;
-            top: -28px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 12px;
-            height: 28px;
-            background: #1a2030;
-            border-radius: 2px;
-        }
-
-        .led {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            margin: 0 auto;
-            position: relative;
-            transition: all 0.4s ease;
-            background: #141820;
-            border: 2px solid #1e2535;
-        }
-
-        @media (min-width: 768px) {
-            .led {
-                width: 68px;
-                height: 68px;
-            }
-        }
-
-        .led.active-red {
-            background: var(--red);
-            box-shadow: 0 0 30px var(--red), 0 0 80px rgba(255, 45, 85, 0.4);
-        }
-
-        .led.active-yellow {
-            background: var(--yellow);
-            box-shadow: 0 0 30px var(--yellow), 0 0 80px rgba(255, 204, 0, 0.4);
-        }
-
-        .led.active-green {
-            background: var(--green);
-            box-shadow: 0 0 30px var(--green), 0 0 80px rgba(48, 209, 88, 0.4);
-        }
-
-        /* COUNTDOWN */
-        .countdown-wrap {
-            text-align: center;
-            margin-bottom: 16px;
-        }
-
-        .countdown-num {
-            font-family: 'Orbitron', monospace;
-            font-size: 3.5rem;
-            font-weight: 900;
-            line-height: 1;
-            transition: color 0.4s;
-        }
-
-        @media (min-width: 768px) {
-            .countdown-num {
-                font-size: 5rem;
-            }
-        }
-
-        .countdown-num.red {
-            color: var(--red);
-            text-shadow: 0 0 30px rgba(255, 45, 85, 0.5);
-        }
-
-        .countdown-num.yellow {
-            color: var(--yellow);
-            text-shadow: 0 0 30px rgba(255, 204, 0, 0.5);
-        }
-
-        .countdown-num.green {
-            color: var(--green);
-            text-shadow: 0 0 30px rgba(48, 209, 88, 0.5);
-        }
-
-        .phase-label {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.65rem;
-            letter-spacing: 0.2em;
-            margin-top: 4px;
-            text-transform: uppercase;
-        }
-
-        .phase-label.red {
-            color: var(--red);
-        }
-
-        .phase-label.yellow {
-            color: var(--yellow);
-        }
-
-        .phase-label.green {
-            color: var(--green);
-        }
-
-        /* PROGRESS */
-        .progress-track {
-            height: 4px;
-            background: rgba(255, 255, 255, 0.07);
-            border-radius: 99px;
-            overflow: hidden;
-            margin-top: 12px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            border-radius: 99px;
-            transition: width 1s linear;
-        }
-
-        .progress-fill.red {
-            background: var(--red);
-        }
-
-        .progress-fill.yellow {
-            background: var(--yellow);
-        }
-
-        .progress-fill.green {
-            background: var(--green);
-        }
-
-        /* TOGGLE SWITCH */
-        .toggle-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 14px 16px;
-        }
-
-        .toggle-label {
-            font-size: 0.85rem;
-            font-weight: 600;
-            letter-spacing: 0.05em;
-        }
-
-        .toggle-sub {
-            font-size: 0.7rem;
-            color: var(--muted);
-        }
-
-        .toggle {
-            width: 50px;
-            height: 26px;
-            background: var(--muted);
-            border-radius: 99px;
-            cursor: pointer;
-            position: relative;
-            transition: background 0.25s;
-        }
-
-        .toggle.on {
-            background: var(--green);
-            box-shadow: 0 0 12px rgba(48, 209, 88, 0.4);
-        }
-
-        .toggle::after {
-            content: '';
-            position: absolute;
-            top: 3px;
-            left: 3px;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: white;
-            transition: left 0.25s;
-        }
-
-        .toggle.on::after {
-            left: 27px;
-        }
-
-        /* PHASE TIMELINE */
-        .phase-timeline {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-        }
-
-        .phase-seg {
-            flex: 1;
-            padding: 8px 6px;
-            border-radius: 8px;
-            text-align: center;
-            border: 1px solid var(--border);
-            background: rgba(255, 255, 255, 0.02);
-            transition: all 0.3s;
-        }
-
-        .phase-seg.active-seg {
-            border-color: currentColor;
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .phase-seg .seg-label {
-            font-size: 0.6rem;
-            font-family: 'JetBrains Mono', monospace;
-            letter-spacing: 0.06em;
-        }
-
-        .phase-seg .seg-dur {
-            font-family: 'Orbitron', monospace;
-            font-size: 0.8rem;
-            font-weight: 700;
-        }
-
-        .phase-seg.r {
-            color: var(--red);
-        }
-
-        .phase-seg.y {
-            color: var(--yellow);
-        }
-
-        .phase-seg.g {
-            color: var(--green);
-        }
-
-        /* BUILTIN LED */
-        .builtin-btn {
-            width: 100%;
-            padding: 12px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: rgba(255, 255, 255, 0.02);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-family: 'Rajdhani', sans-serif;
-            font-size: 0.8rem;
-            font-weight: 600;
-            letter-spacing: 0.06em;
-            color: var(--text);
-            text-transform: uppercase;
-            transition: all 0.25s;
-        }
-
-        .builtin-btn.on {
-            border-color: var(--accent);
-            background: rgba(0, 245, 255, 0.08);
-            color: var(--accent);
-        }
-
-        .builtin-led-indicator {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            border: 2px solid var(--muted);
-            transition: all 0.25s;
-        }
-
-        .builtin-btn.on .builtin-led-indicator {
-            background: var(--accent);
-            border-color: var(--accent);
-            box-shadow: 0 0 12px var(--accent);
-        }
-
-        /* RIGHT COLUMN */
-        .right-col {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        /* LED TOGGLES */
-        .led-toggles {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .led-toggle {
-            flex: 1;
-            min-width: 80px;
-            padding: 12px 4px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: rgba(255, 255, 255, 0.02);
-            cursor: pointer;
-            text-align: center;
-            font-size: 0.65rem;
-            letter-spacing: 0.07em;
-            font-family: 'JetBrains Mono', monospace;
-            transition: all 0.25s;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .led-toggle .indicator {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            border: 2px solid currentColor;
-            transition: all 0.25s;
-        }
-
-        .led-toggle.on .indicator {
-            background: currentColor;
-            box-shadow: 0 0 14px currentColor;
-        }
-
-        .led-toggle.red-t {
-            color: var(--red);
-        }
-
-        .led-toggle.yellow-t {
-            color: var(--yellow);
-        }
-
-        .led-toggle.green-t {
-            color: var(--green);
-        }
-
-        /* CONTROLS */
-        .controls-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-            gap: 10px;
-        }
-
-        .ctrl-btn {
-            padding: 12px 8px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            cursor: pointer;
-            font-family: 'Rajdhani', sans-serif;
-            transition: all 0.2s;
-            color: var(--text);
-            font-size: 0.7rem;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            font-weight: 600;
-        }
-
-        .ctrl-btn:hover {
-            border-color: var(--accent);
-            background: rgba(0, 245, 255, 0.05);
-        }
-
-        .ctrl-btn.danger:hover {
-            border-color: var(--red);
-            background: rgba(255, 45, 85, 0.08);
-        }
-
-        /* LOG */
-        .log-scroll {
-            max-height: 360px;
-            overflow-y: auto;
-        }
-
-        .log-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.7rem;
-        }
-
-        .log-table th {
-            padding: 8px 10px;
-            text-align: left;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.55rem;
-            letter-spacing: 0.1em;
-            color: var(--muted);
-            text-transform: uppercase;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .log-table td {
-            padding: 8px 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-        }
-
-        .log-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 99px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.55rem;
-            font-weight: 600;
-        }
-
-        .log-badge.RED {
-            background: rgba(255, 45, 85, 0.15);
-            color: var(--red);
-        }
-
-        .log-badge.YELLOW {
-            background: rgba(255, 204, 0, 0.15);
-            color: var(--yellow);
-        }
-
-        .log-badge.GREEN {
-            background: rgba(48, 209, 88, 0.15);
-            color: var(--green);
-        }
-
-        .log-badge.SYSTEM {
-            background: rgba(0, 245, 255, 0.1);
-            color: var(--accent);
-        }
-
-        .empty-log {
-            text-align: center;
-            padding: 32px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem;
-            color: var(--muted);
-        }
-
-        /* TOAST */
-        #toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-            background: rgba(10, 13, 24, 0.95);
-            border: 1px solid var(--border);
-            padding: 10px 16px;
-            border-radius: 10px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem;
-            color: var(--accent);
-            backdrop-filter: blur(12px);
-            transform: translateY(20px);
-            opacity: 0;
-            transition: all 0.3s;
-            pointer-events: none;
-            max-width: calc(100vw - 40px);
-        }
-
-        #toast.show {
-            transform: translateY(0);
-            opacity: 1;
-        }
-
-        /* CONNECTION STATUS INDICATOR */
-        .conn-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 2px 8px;
-            border-radius: 99px;
-            font-size: 0.6rem;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .conn-badge.online {
-            background: rgba(48, 209, 88, 0.15);
-            color: var(--green);
-        }
-
-        .conn-badge.offline {
-            background: rgba(255, 45, 85, 0.15);
-            color: var(--red);
-        }
-    </style>
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="traffic.css">
 </head>
 
 <body>
 
-    <div class="topbar">
-        <div class="topbar-left">
-            <a href="index.html" class="back-btn">← Home</a>
-            <div class="topbar-title">TRAFFIC CONTROL</div>
+    <!-- BACKGROUND -->
+    <div class="bg-noise"></div>
+    <div class="bg-glow"></div>
+
+    <!-- NAV -->
+    <nav class="topnav">
+        <a href="index.html" class="nav-back">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M11 4L6 9l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+            Hub
+        </a>
+        <div class="nav-title">
+            <span class="nav-dot tl-dot"></span>
+            Traffic Light Control
         </div>
-        <div class="topbar-right">
-            <div class="status-pill" id="sbStatus"><span class="dot yellow" id="sbDot"></span>Supabase</div>
-            <div class="status-pill" id="wifiStatus"><span class="dot yellow" id="wifiDot"></span>WiFi</div>
-            <div class="status-pill" id="espStatus"><span class="dot red-d" id="espDot"></span>ESP32</div>
+        <a href="temperature.html" class="nav-link-other">Temp Monitor →</a>
+    </nav>
+
+    <!-- STATUS BAR -->
+    <div class="status-bar">
+        <div class="status-item" id="status-wifi">
+            <span class="status-dot"></span>
+            <span class="status-label">WiFi</span>
+            <span class="status-value" id="wifi-val">Connecting…</span>
+        </div>
+        <div class="status-item" id="status-db">
+            <span class="status-dot"></span>
+            <span class="status-label">Supabase</span>
+            <span class="status-value" id="db-val">Connecting…</span>
+        </div>
+        <div class="status-item" id="status-esp">
+            <span class="status-dot"></span>
+            <span class="status-label">ESP32</span>
+            <span class="status-value" id="esp-val">Offline</span>
+        </div>
+        <div class="status-item">
+            <span class="status-dot dot-on"></span>
+            <span class="status-label">Last Sync</span>
+            <span class="status-value" id="last-sync">—</span>
         </div>
     </div>
 
-    <div class="page">
-        <div class="page-header">
-            <div class="page-tag">// module_01 · traffic_control</div>
-            <div class="page-title">Traffic Light <span>Dashboard</span></div>
-        </div>
+    <!-- MAIN LAYOUT -->
+    <main class="layout">
 
-        <div class="main-grid">
-            <!-- LEFT COLUMN -->
-            <div style="display:flex; flex-direction:column; gap:20px;">
-                <!-- POWER CARD -->
-                <div class="card">
-                    <div class="toggle-row">
-                        <div>
-                            <div class="toggle-label">Traffic System</div>
-                            <div class="toggle-sub" id="systemStatusTxt">System is OFF</div>
-                        </div>
-                        <div class="toggle" id="powerToggle" onclick="toggleSystem()"></div>
+        <!-- LEFT: TRAFFIC LIGHT VISUAL + COUNTDOWN -->
+        <section class="panel panel-main">
+            <div class="panel-header">
+                <h2>Live Signal</h2>
+                <div class="master-toggle-wrap">
+                    <span class="toggle-label">System Power</span>
+                    <button class="master-toggle" id="masterToggle" onclick="toggleMaster()">
+                        <span class="toggle-track">
+                            <span class="toggle-thumb"></span>
+                        </span>
+                        <span class="toggle-text" id="masterText">OFF</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- TRAFFIC LIGHT BOX -->
+            <div class="tl-housing">
+                <div class="tl-body">
+                    <div class="tl-light" id="led-red">
+                        <div class="tl-lens red-lens"></div>
+                    </div>
+                    <div class="tl-light" id="led-yellow">
+                        <div class="tl-lens yellow-lens"></div>
+                    </div>
+                    <div class="tl-light" id="led-green">
+                        <div class="tl-lens green-lens"></div>
                     </div>
                 </div>
+                <div class="tl-pole"></div>
+            </div>
 
-                <!-- VISUAL CARD -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-header-title">SIGNAL DISPLAY</div>
-                    </div>
-                    <div class="card-body" style="text-align:center;">
-                        <div class="phase-timeline">
-                            <div class="phase-seg r" id="segR">
-                                <div class="seg-label">STOP</div>
-                                <div class="seg-dur">30s</div>
-                            </div>
-                            <div class="phase-seg y" id="segY">
-                                <div class="seg-label">READY</div>
-                                <div class="seg-dur">10s</div>
-                            </div>
-                            <div class="phase-seg g" id="segG">
-                                <div class="seg-label">GO</div>
-                                <div class="seg-dur">30s</div>
-                            </div>
-                        </div>
-
-                        <div class="tl-housing">
-                            <div class="led" id="ledRed"></div>
-                            <div class="led" id="ledYellow"></div>
-                            <div class="led" id="ledGreen"></div>
-                        </div>
-
-                        <div class="countdown-wrap">
-                            <div class="countdown-num red" id="countdownNum">--</div>
-                            <div class="phase-label red" id="phaseLabel">SYSTEM OFF</div>
-                        </div>
-                        <div class="progress-track">
-                            <div class="progress-fill red" id="progressFill" style="width:0%"></div>
-                        </div>
-                    </div>
+            <!-- COUNTDOWN -->
+            <div class="countdown-block" id="countdownBlock">
+                <div class="countdown-state" id="currentState">SYSTEM OFF</div>
+                <div class="countdown-ring-wrap">
+                    <svg class="countdown-ring" viewBox="0 0 120 120">
+                        <circle class="ring-track" cx="60" cy="60" r="52" />
+                        <circle class="ring-progress" id="ringProgress" cx="60" cy="60" r="52" stroke-dasharray="326.7"
+                            stroke-dashoffset="326.7" />
+                    </svg>
+                    <div class="countdown-num" id="countdownNum">--</div>
                 </div>
+                <div class="countdown-next" id="nextState">Next: —</div>
+            </div>
+        </section>
 
-                <!-- BUILTIN LED -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-header-title">ESP32 BUILT-IN LED</div>
+        <!-- RIGHT: CONTROLS -->
+        <section class="panel panel-controls">
+
+            <!-- SECTION: Manual LED Control -->
+            <div class="ctrl-section">
+                <div class="ctrl-section-title">Manual LED Override</div>
+                <p class="ctrl-note">Activating manual LED disables auto-cycle</p>
+                <div class="led-controls">
+                    <button class="led-btn led-btn-red" id="btn-red" onclick="toggleLED('red')">
+                        <span class="led-indicator"></span>
+                        Red LED
+                        <span class="led-state" id="state-red">OFF</span>
+                    </button>
+                    <button class="led-btn led-btn-yellow" id="btn-yellow" onclick="toggleLED('yellow')">
+                        <span class="led-indicator"></span>
+                        Yellow LED
+                        <span class="led-state" id="state-yellow">OFF</span>
+                    </button>
+                    <button class="led-btn led-btn-green" id="btn-green" onclick="toggleLED('green')">
+                        <span class="led-indicator"></span>
+                        Green LED
+                        <span class="led-state" id="state-green">OFF</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- SECTION: Built-in LED -->
+            <div class="ctrl-section">
+                <div class="ctrl-section-title">ESP32 Built-in LED</div>
+                <div class="builtin-row">
+                    <span class="builtin-label">Board LED (GPIO 2)</span>
+                    <button class="toggle-switch" id="builtinToggle" onclick="toggleBuiltin()">
+                        <span class="ts-track"><span class="ts-thumb"></span></span>
+                        <span class="ts-text" id="builtinText">OFF</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- SECTION: Auto Cycle Info -->
+            <div class="ctrl-section">
+                <div class="ctrl-section-title">Auto Cycle Timings</div>
+                <div class="timing-table">
+                    <div class="timing-row">
+                        <span class="timing-dot red-bg"></span>
+                        <span class="timing-name">STOP (Red)</span>
+                        <span class="timing-dur">30s</span>
                     </div>
-                    <div class="card-body">
-                        <button class="builtin-btn" id="builtinBtn" onclick="toggleBuiltin()">
-                            <div class="builtin-led-indicator" id="builtinIndicator"></div>
-                            <span id="builtinText">Built-in LED — OFF</span>
-                        </button>
+                    <div class="timing-row">
+                        <span class="timing-dot yellow-bg"></span>
+                        <span class="timing-name">READY (Yellow)</span>
+                        <span class="timing-dur">10s</span>
+                    </div>
+                    <div class="timing-row">
+                        <span class="timing-dot green-bg"></span>
+                        <span class="timing-name">GO (Green)</span>
+                        <span class="timing-dur">30s</span>
                     </div>
                 </div>
             </div>
 
-            <!-- RIGHT COLUMN -->
-            <div class="right-col">
-                <!-- MANUAL LED CONTROLS -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-header-title">MANUAL LED OVERRIDE</div>
-                        <span
-                            style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--muted);margin-left:auto;">Single-active
-                            mode</span>
-                    </div>
-                    <div class="card-body">
-                        <p
-                            style="font-size:0.7rem;color:var(--muted);margin-bottom:14px;font-family:'JetBrains Mono',monospace;">
-                            ⚡ Activating a manual LED disables automatic mode
-                        </p>
-                        <div class="led-toggles">
-                            <div class="led-toggle red-t" id="manRed" onclick="toggleManualLED('red')">
-                                <div class="indicator"></div>
-                                <span>RED</span>
-                            </div>
-                            <div class="led-toggle yellow-t" id="manYellow" onclick="toggleManualLED('yellow')">
-                                <div class="indicator"></div>
-                                <span>YELLOW</span>
-                            </div>
-                            <div class="led-toggle green-t" id="manGreen" onclick="toggleManualLED('green')">
-                                <div class="indicator"></div>
-                                <span>GREEN</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- QUICK CONTROLS -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-header-title">QUICK CONTROLS</div>
-                    </div>
-                    <div class="card-body">
-                        <div class="controls-grid">
-                            <button class="ctrl-btn" onclick="sendCommandWrapper('force_red')">
-                                <span style="color:var(--red);">●</span> Force Red
-                            </button>
-                            <button class="ctrl-btn" onclick="sendCommandWrapper('force_yellow')">
-                                <span style="color:var(--yellow);">●</span> Force Yellow
-                            </button>
-                            <button class="ctrl-btn" onclick="sendCommandWrapper('force_green')">
-                                <span style="color:var(--green);">●</span> Force Green
-                            </button>
-                            <button class="ctrl-btn danger" onclick="sendCommandWrapper('all_off')">
-                                ✕ All Off
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- STATUS OVERVIEW -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-header-title">SYSTEM STATUS</div>
-                    </div>
-                    <div class="card-body">
-                        <div
-                            style="display:flex; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
-                            <div><span style="color:var(--muted);">Mode:</span> <strong
-                                    id="modeDisplay">Offline</strong></div>
-                            <div><span style="color:var(--muted);">Active LED:</span> <strong
-                                    id="activeLedDisplay">None</strong></div>
-                            <div><span style="color:var(--muted);">Commands Sent:</span> <strong
-                                    id="cmdCount">0</strong></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- HISTORY LOG -->
-                <div class="card" style="flex:1;">
-                    <div class="card-header">
-                        <div class="card-header-title">EVENT LOG</div>
-                        <button onclick="clearLog()"
-                            style="margin-left:auto;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:0.6rem;font-family:'JetBrains Mono',monospace;">Clear</button>
-                    </div>
-                    <div class="card-body" style="padding:0;">
-                        <div class="log-scroll">
-                            <table class="log-table">
-                                <thead>
-                                    <tr>
-                                        <th>Event</th>
-                                        <th>Details</th>
-                                        <th>Timestamp</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="logBody">
-                                    <tr>
-                                        <td colspan="3" class="empty-log">No events yet. Start the system to begin
-                                            logging.</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+            <!-- SECTION: Buzzer -->
+            <div class="ctrl-section">
+                <div class="ctrl-section-title">Buzzer</div>
+                <div class="builtin-row">
+                    <span class="builtin-label">Beep on state change</span>
+                    <div class="buzzer-icon" id="buzzerIcon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M18 8a6 6 0 0 1 0 8M14 10.5a2.5 2.5 0 0 1 0 3M3 10v4h4l5 5V5L7 10H3z"
+                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                        </svg>
+                        <span id="buzzerText">Active</span>
                     </div>
                 </div>
             </div>
+
+        </section>
+    </main>
+
+    <!-- LOGS TABLE -->
+    <section class="logs-section">
+        <div class="logs-header">
+            <h3>Activity Log</h3>
+            <div class="logs-actions">
+                <span class="log-count" id="logCount">0 events</span>
+                <button class="btn-clear" onclick="clearLogs()">Clear</button>
+            </div>
         </div>
-    </div>
+        <div class="logs-table-wrap">
+            <table class="logs-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Event</th>
+                        <th>State</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody id="logsBody">
+                    <tr class="empty-row">
+                        <td colspan="4">No events recorded yet. Turn on the system to begin.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
 
-    <div id="toast">Command sent</div>
-
+    <!-- SUPABASE SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // ===== SUPABASE CONFIG =====
+        // ============================================================
+        // CONFIG — replace with your actual Supabase credentials
+        // ============================================================
         const SUPABASE_URL = 'https://lsoordaciwrwrevvxrbh.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxzb29yZGFjaXdyd3JldnZ4cmJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTk3MDgsImV4cCI6MjA5MDI3NTcwOH0.KMm0yqK2EvZtBxveVumdCZMjIMuiVlZYKfX0i9hA8dI';
 
-        let sb;
-        try {
-            sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            updateStatus('sb', 'green');
-        } catch (e) {
-            updateStatus('sb', 'red');
-            console.error('Supabase init error:', e);
-        }
+        const { createClient } = supabase;
+        const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // ===== STATE =====
+        // ============================================================
+        // STATE
+        // ============================================================
+        const TIMINGS = { red: 30, yellow: 10, green: 30 };
+        const SEQUENCE = ['red', 'yellow', 'green'];
+
         let systemOn = false;
-        let currentPhase = 'red';
-        let countdown = 30;
-        let maxCount = 30;
-        let timerInterval = null;
+        let activeMode = null; // 'auto' | 'manual-red' | 'manual-yellow' | 'manual-green' | 'builtin'
+        let currentPhaseIndex = 0;
+        let countdown = 0;
+        let countdownTimer = null;
         let builtinOn = false;
-        let manualLED = null;
-        let logs = [];
-        let commandRetryQueue = [];
-        let commandCount = 0;
-        let isProcessingQueue = false;
+        let manualLEDs = { red: false, yellow: false, green: false };
 
-        const PHASES = { red: 30, yellow: 10, green: 30 };
-        const PHASE_ORDER = ['red', 'yellow', 'green'];
-
-        // ===== ACTIVE DASHBOARD MANAGEMENT =====
-        let isActiveDashboard = false;
-
-        async function checkAndActivateDashboard() {
-            if (!sb) return false;
-
+        // ============================================================
+        // SUPABASE INIT CHECK
+        // ============================================================
+        async function initSupabase() {
             try {
-                // Check current active dashboard
-                const { data, error } = await sb
-                    .from('active_dashboard')
-                    .select('dashboard')
-                    .eq('id', 1)
-                    .single();
-
+                const { error } = await db.from('traffic_commands').select('id').limit(1);
                 if (error) throw error;
-
-                // If temphum is active, don't allow traffic commands
-                if (data.dashboard === 'temphum') {
-                    showToast('⚠️ Temperature & Humidity Dashboard is active. Please close it first.', true);
-                    return false;
-                }
-
-                // If no active dashboard or traffic is already active
-                if (data.dashboard === 'traffic') {
-                    isActiveDashboard = true;
-                    return true;
-                }
-
-                // Activate traffic dashboard
-                if (data.dashboard === 'none' || data.dashboard !== 'traffic') {
-                    const { error: updateError } = await sb
-                        .from('active_dashboard')
-                        .update({ dashboard: 'traffic', updated_at: new Date().toISOString() })
-                        .eq('id', 1);
-
-                    if (updateError) throw updateError;
-                    isActiveDashboard = true;
-                    showToast('✓ Traffic Dashboard Activated');
-                    return true;
-                }
-
-                return true;
+                setStatus('db', 'online', 'Connected');
+                setStatus('wifi', 'online', 'Online');
+                subscribeToESP();
             } catch (e) {
-                console.error('Dashboard activation error:', e);
-                showToast('Error activating dashboard', true);
-                return false;
+                setStatus('db', 'error', 'Error');
+                setStatus('wifi', 'error', 'Check config');
+                console.error('Supabase init error:', e.message);
             }
         }
 
-        async function deactivateDashboard() {
-            if (!sb || !isActiveDashboard) return;
+        function setStatus(which, state, label) {
+            const map = { wifi: 'status-wifi', db: 'status-db', esp: 'status-esp' };
+            const el = document.getElementById(map[which]);
+            if (!el) return;
+            const dot = el.querySelector('.status-dot');
+            const val = el.querySelector('.status-value');
+            dot.className = 'status-dot ' + (state === 'online' ? 'dot-on' : state === 'error' ? 'dot-err' : 'dot-off');
+            if (val) val.textContent = label;
+        }
 
+        // Subscribe to ESP32 heartbeat / status
+        function subscribeToESP() {
+            db.channel('esp32-status')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'device_status' }, payload => {
+                    const d = payload.new;
+                    if (d && d.device === 'esp32-traffic') {
+                        setStatus('esp', d.online ? 'online' : 'offline', d.online ? 'Online' : 'Offline');
+                        document.getElementById('last-sync').textContent = new Date().toLocaleTimeString();
+                    }
+                })
+                .subscribe();
+        }
+
+        // ============================================================
+        // SEND COMMAND TO SUPABASE
+        // ============================================================
+        async function sendCommand(cmd, value, source = 'dashboard') {
             try {
-                const { data, error } = await sb
-                    .from('active_dashboard')
-                    .select('dashboard')
-                    .eq('id', 1)
-                    .single();
-
-                if (error) throw error;
-
-                // Only deactivate if this dashboard is still the active one
-                if (data.dashboard === 'traffic') {
-                    await sb
-                        .from('active_dashboard')
-                        .update({ dashboard: 'none', updated_at: new Date().toISOString() })
-                        .eq('id', 1);
-
-                    // Send system off command to ESP32
-                    await sendCommandWithRetry('system_off');
-                    isActiveDashboard = false;
-                }
+                await db.from('traffic_commands').insert({
+                    command: cmd,
+                    value: value,
+                    source: source,
+                    created_at: new Date().toISOString()
+                });
+                document.getElementById('last-sync').textContent = new Date().toLocaleTimeString();
+                addLog(cmd, value, source);
             } catch (e) {
-                console.error('Dashboard deactivation error:', e);
+                console.error('Send command error:', e.message);
             }
         }
 
-        // Add page visibility and unload handlers
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden && isActiveDashboard) {
-                deactivateDashboard();
-            }
-        });
-
-        window.addEventListener('beforeunload', () => {
-            if (isActiveDashboard) {
-                // Use synchronous approach for beforeunload
-                if (sb) {
-                    sb.from('active_dashboard')
-                        .update({ dashboard: 'none', updated_at: new Date().toISOString() })
-                        .eq('id', 1)
-                        .then(() => console.log('Dashboard deactivated on unload'));
-                }
-            }
-        });
-
-        // Modify your existing toggleSystem function to check activation first
-        const originalToggleSystem = toggleSystem;
-        window.toggleSystem = async function () {
-            if (!systemOn && !isActiveDashboard) {
-                const activated = await checkAndActivateDashboard();
-                if (!activated) return;
-            }
-            originalToggleSystem();
-        };
-
-        // Modify sendCommandWrapper
-        const originalSendCommandWrapper = sendCommandWrapper;
-        window.sendCommandWrapper = async function (cmd) {
-            if (!isActiveDashboard) {
-                const activated = await checkAndActivateDashboard();
-                if (!activated) return;
-            }
-            originalSendCommandWrapper(cmd);
-        };
-
-        // Initialize - check activation on page load
-        window.addEventListener('load', async () => {
-            await checkAndActivateDashboard();
-            // Start polling ESP status
-            setInterval(pollESPStatus, 10000);
-            pollESPStatus();
-        });
-
-        // ===== STATUS BAR =====
-        function updateStatus(type, color) {
-            const map = { sb: 'sbDot', wifi: 'wifiDot', esp: 'espDot' };
-            const el = document.getElementById(map[type]);
-            if (el) el.className = 'dot ' + (color === 'green' ? 'green' : color === 'yellow' ? 'yellow' : 'red-d');
-        }
-
-        // ===== TOAST =====
-        function showToast(msg, isError = false) {
-            const t = document.getElementById('toast');
-            t.textContent = msg;
-            t.style.color = isError ? 'var(--red)' : 'var(--accent)';
-            t.classList.add('show');
-            setTimeout(() => {
-                t.classList.remove('show');
-                t.style.color = 'var(--accent)';
-            }, 2500);
-        }
-
-        // ===== LOG =====
-        async function addLog(event, details, phase) {
-            const now = new Date();
-            const ts = now.toLocaleTimeString() + ' ' + now.toLocaleDateString();
-            const entry = { event, details, phase: phase || 'SYSTEM', ts };
-            logs.unshift(entry);
-            renderLog();
-
-            if (sb) {
-                try {
-                    await sb.from('traffic_logs').insert({
-                        event, details, phase: entry.phase, timestamp: now.toISOString()
-                    });
-                } catch (err) {
-                    console.error('Log insert error:', err);
-                }
-            }
-        }
-
-        function renderLog() {
-            const tbody = document.getElementById('logBody');
-            if (!logs.length) {
-                tbody.innerHTML = '<tr><td colspan="3" class="empty-log">No events yet.</td></tr>';
-                return;
-            }
-            tbody.innerHTML = logs.slice(0, 100).map(l => `
-                <tr>
-                    <td><span class="log-badge ${l.phase}">${l.phase}</span></td>
-                    <td style="color:rgba(232,237,245,0.7)">${escapeHtml(l.details)}</td>
-                    <td class="log-time" style="font-size:0.6rem;color:var(--muted);">${l.ts}</td>
-                </tr>
-            `).join('');
-        }
-
-        function escapeHtml(str) {
-            return str.replace(/[&<>]/g, function (m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
-        }
-
-        function clearLog() {
-            logs = [];
-            renderLog();
-            showToast('Log cleared');
-        }
-
-        // ===== VISUAL UPDATE =====
-        function updateVisual(phase) {
-            document.getElementById('ledRed').className = 'led' + (phase === 'red' ? ' active-red' : '');
-            document.getElementById('ledYellow').className = 'led' + (phase === 'yellow' ? ' active-yellow' : '');
-            document.getElementById('ledGreen').className = 'led' + (phase === 'green' ? ' active-green' : '');
-
-            const cn = document.getElementById('countdownNum');
-            cn.className = 'countdown-num ' + phase;
-
-            const pl = document.getElementById('phaseLabel');
-            const labels = { red: 'STOP — RED LIGHT', yellow: 'READY — YELLOW', green: 'GO — GREEN LIGHT' };
-            pl.className = 'phase-label ' + phase;
-            pl.textContent = systemOn ? labels[phase] : 'SYSTEM OFF';
-
-            const pf = document.getElementById('progressFill');
-            pf.className = 'progress-fill ' + phase;
-            const pct = Math.round((countdown / maxCount) * 100);
-            pf.style.width = pct + '%';
-
-            ['R', 'Y', 'G'].forEach(x => document.getElementById('seg' + x).classList.remove('active-seg'));
-            const segMap = { red: 'segR', yellow: 'segY', green: 'segG' };
-            if (systemOn) document.getElementById(segMap[phase])?.classList.add('active-seg');
-
-            // Update status display
-            document.getElementById('modeDisplay').textContent = systemOn ? 'Auto Mode' : (manualLED ? 'Manual Mode' : 'Offline');
-            document.getElementById('activeLedDisplay').textContent = manualLED ? manualLED.toUpperCase() : (systemOn ? currentPhase.toUpperCase() : 'None');
-        }
-
-        function updateCountdownDisplay() {
-            const cn = document.getElementById('countdownNum');
-            cn.textContent = systemOn ? String(countdown).padStart(2, '0') : '--';
-        }
-
-        // ===== SYSTEM TOGGLE =====
-        function toggleSystem() {
-            if (!systemOn) {
-                systemOn = true;
-                manualLED = null;
-                clearManualUI();
-                document.getElementById('powerToggle').classList.add('on');
-                document.getElementById('systemStatusTxt').textContent = 'System is ON';
-                startPhase('red');
-                addLog('SYSTEM', 'Traffic system started');
-                sendCommandWithRetry('system_on');
-                updateStatus('esp', 'green');
+        // ============================================================
+        // MASTER TOGGLE
+        // ============================================================
+        function toggleMaster() {
+            systemOn = !systemOn;
+            const btn = document.getElementById('masterToggle');
+            const txt = document.getElementById('masterText');
+            btn.classList.toggle('active', systemOn);
+            txt.textContent = systemOn ? 'ON' : 'OFF';
+            if (systemOn) {
+                deactivateAllManual();
+                startAutoCycle();
+                sendCommand('system', 'on');
             } else {
-                systemOn = false;
-                if (timerInterval) clearInterval(timerInterval);
-                document.getElementById('powerToggle').classList.remove('on');
-                document.getElementById('systemStatusTxt').textContent = 'System is OFF';
-                updateVisual('red');
-                document.getElementById('countdownNum').textContent = '--';
-                document.getElementById('phaseLabel').textContent = 'SYSTEM OFF';
-                document.getElementById('progressFill').style.width = '0%';
-                document.getElementById('ledRed').className = 'led';
-                document.getElementById('ledYellow').className = 'led';
-                document.getElementById('ledGreen').className = 'led';
-                addLog('SYSTEM', 'Traffic system stopped');
-                sendCommandWithRetry('system_off');
-                updateStatus('esp', 'yellow');
+                stopAll();
+                sendCommand('system', 'off');
             }
-            updateVisual(currentPhase);
         }
 
-        // ===== PHASE CONTROL =====
-        function startPhase(phase) {
-            if (!systemOn) return;
-            if (timerInterval) clearInterval(timerInterval);
+        // ============================================================
+        // AUTO CYCLE
+        // ============================================================
+        function startAutoCycle() {
+            activeMode = 'auto';
+            currentPhaseIndex = 0;
+            startPhase();
+        }
 
-            currentPhase = phase;
-            countdown = PHASES[phase];
-            maxCount = PHASES[phase];
-            updateVisual(phase);
-            updateCountdownDisplay();
-            addLog(phase.toUpperCase(), `Phase changed to ${phase.toUpperCase()} — ${PHASES[phase]}s`);
-            sendPhaseToSupabase(phase);
-            sendCommandWithRetry('beep');
+        function startPhase() {
+            if (activeMode !== 'auto') return;
+            const phase = SEQUENCE[currentPhaseIndex];
+            countdown = TIMINGS[phase];
+            setActiveLED(phase);
+            updateCountdownUI(phase, countdown);
+            sendCommand('led', phase, 'auto-cycle');
+            sendCommand('buzzer', 'beep', 'auto-cycle');
+            runCountdown();
+        }
 
-            timerInterval = setInterval(() => {
-                if (!systemOn) return;
+        function runCountdown() {
+            clearInterval(countdownTimer);
+            countdownTimer = setInterval(() => {
+                if (activeMode !== 'auto') { clearInterval(countdownTimer); return; }
                 countdown--;
-                updateCountdownDisplay();
-                updateVisual(currentPhase);
+                const phase = SEQUENCE[currentPhaseIndex];
+                updateCountdownUI(phase, countdown);
                 if (countdown <= 0) {
-                    const idx = PHASE_ORDER.indexOf(currentPhase);
-                    const next = PHASE_ORDER[(idx + 1) % PHASE_ORDER.length];
-                    startPhase(next);
+                    clearInterval(countdownTimer);
+                    currentPhaseIndex = (currentPhaseIndex + 1) % SEQUENCE.length;
+                    startPhase();
                 }
             }, 1000);
         }
 
-        // ===== COMMAND WITH RETRY (FIXES DELAY ISSUE) =====
-        async function sendCommandWithRetry(cmd, extra = {}, retries = 3) {
-            if (!sb) {
-                showToast('Supabase not connected', true);
-                return false;
+        function updateCountdownUI(phase, secs) {
+            const labels = { red: 'STOP', yellow: 'READY', green: 'GO' };
+            const next = SEQUENCE[(SEQUENCE.indexOf(phase) + 1) % SEQUENCE.length];
+            const total = TIMINGS[phase];
+            document.getElementById('currentState').textContent = labels[phase];
+            document.getElementById('currentState').className = 'countdown-state state-' + phase;
+            document.getElementById('countdownNum').textContent = secs;
+            document.getElementById('nextState').textContent = 'Next: ' + labels[next];
+            // Update ring
+            const circumference = 326.7;
+            const offset = circumference * (1 - secs / total);
+            const ring = document.getElementById('ringProgress');
+            ring.style.strokeDashoffset = offset;
+            ring.className = 'ring-progress ring-' + phase;
+        }
+
+        // ============================================================
+        // MANUAL LED CONTROLS
+        // ============================================================
+        function toggleLED(color) {
+            if (!systemOn) {
+                alert('Turn on the system first.');
+                return;
             }
-
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const { error } = await sb.from('traffic_commands').insert({
-                        command: cmd,
-                        payload: extra,
-                        created_at: new Date().toISOString(),
-                        consumed: false
-                    });
-
-                    if (error) throw error;
-
-                    showToast('✓ ' + cmd);
-                    updateStatus('sb', 'green');
-                    commandCount++;
-                    document.getElementById('cmdCount').textContent = commandCount;
-                    return true;
-                } catch (e) {
-                    console.error(`Command error (attempt ${i + 1}/${retries}):`, e);
-                    updateStatus('sb', 'red');
-
-                    if (i < retries - 1) {
-                        await new Promise(r => setTimeout(r, 1000 * (i + 1))); // Exponential backoff
+            // Single active rule: turn off auto cycle and other LEDs
+            stopAll(false); // don't turn off system
+            manualLEDs[color] = !manualLEDs[color];
+            if (manualLEDs[color]) {
+                activeMode = 'manual-' + color;
+                setActiveLED(color);
+                document.getElementById('state-' + color).textContent = 'ON';
+                sendCommand('led', color, 'manual');
+                // Reset others
+                ['red', 'yellow', 'green'].forEach(c => {
+                    if (c !== color) {
+                        manualLEDs[c] = false;
+                        document.getElementById('state-' + c).textContent = 'OFF';
+                        document.getElementById('btn-' + c).classList.remove('active');
                     }
-                }
-            }
-
-            showToast('Failed: ' + cmd, true);
-            return false;
-        }
-
-        async function sendPhaseToSupabase(phase) {
-            if (!sb) return;
-            try {
-                const { error } = await sb
-                    .from('traffic_state')
-                    .upsert({
-                        id: 1,
-                        phase: phase,
-                        countdown: countdown,
-                        updated_at: new Date().toISOString()
-                    }, { onConflict: 'id' });
-                if (error) console.error('Phase update error:', error);
-            } catch (e) {
-                console.error('Phase update exception:', e);
-            }
-        }
-
-        // ===== MANUAL LED =====
-        function toggleManualLED(color) {
-            if (manualLED === color) {
-                manualLED = null;
-                document.getElementById('man' + capitalize(color)).classList.remove('on');
-                sendCommandWithRetry('led_off', { color });
-                addLog('SYSTEM', `Manual ${color} LED turned off`);
-
-                // If system was off, keep it off
-                if (!systemOn) {
-                    document.getElementById('ledRed').className = 'led';
-                    document.getElementById('ledYellow').className = 'led';
-                    document.getElementById('ledGreen').className = 'led';
-                }
-            } else {
-                if (systemOn) {
-                    systemOn = false;
-                    if (timerInterval) clearInterval(timerInterval);
-                    document.getElementById('powerToggle').classList.remove('on');
-                    document.getElementById('systemStatusTxt').textContent = 'System is OFF';
-                }
-                clearManualUI();
-                manualLED = color;
-                document.getElementById('man' + capitalize(color)).classList.add('on');
-                document.getElementById('ledRed').className = 'led' + (color === 'red' ? ' active-red' : '');
-                document.getElementById('ledYellow').className = 'led' + (color === 'yellow' ? ' active-yellow' : '');
-                document.getElementById('ledGreen').className = 'led' + (color === 'green' ? ' active-green' : '');
-                sendCommandWithRetry('manual_led', { color });
-                addLog(color.toUpperCase(), `Manual override: ${color} LED ON`);
-            }
-            updateVisual(currentPhase);
-        }
-
-        function clearManualUI() {
-            ['red', 'yellow', 'green'].forEach(c => {
-                document.getElementById('man' + capitalize(c))?.classList.remove('on');
-            });
-            manualLED = null;
-        }
-
-        function capitalize(s) {
-            return s.charAt(0).toUpperCase() + s.slice(1);
-        }
-
-        // ===== BUILTIN LED =====
-        function toggleBuiltin() {
-            builtinOn = !builtinOn;
-            const btn = document.getElementById('builtinBtn');
-            const txt = document.getElementById('builtinText');
-            if (builtinOn) {
-                btn.classList.add('on');
-                txt.textContent = 'Built-in LED — ON';
-            } else {
-                btn.classList.remove('on');
-                txt.textContent = 'Built-in LED — OFF';
-            }
-            sendCommandWithRetry(builtinOn ? 'builtin_on' : 'builtin_off');
-            addLog('SYSTEM', `Built-in LED ${builtinOn ? 'ON' : 'OFF'}`);
-        }
-
-        // ===== COMMAND WRAPPER =====
-        function sendCommandWrapper(cmd) {
-            if (cmd === 'force_red' || cmd === 'force_yellow' || cmd === 'force_green') {
-                const phase = cmd.split('_')[1];
-                if (!systemOn) {
-                    systemOn = true;
-                    document.getElementById('powerToggle').classList.add('on');
-                    document.getElementById('systemStatusTxt').textContent = 'System is ON';
-                }
-                clearManualUI();
-                startPhase(phase);
-            } else if (cmd === 'all_off') {
-                clearManualUI();
-                if (systemOn) toggleSystem();
-                sendCommandWithRetry('all_off');
-                document.getElementById('ledRed').className = 'led';
-                document.getElementById('ledYellow').className = 'led';
-                document.getElementById('ledGreen').className = 'led';
+                });
+                document.getElementById('btn-' + color).classList.add('active');
+                document.getElementById('currentState').textContent = color.toUpperCase() + ' MANUAL';
                 document.getElementById('countdownNum').textContent = '--';
-                addLog('SYSTEM', 'All LEDs turned off');
+                document.getElementById('nextState').textContent = 'Manual Override';
+            } else {
+                activeMode = null;
+                setActiveLED(null);
+                document.getElementById('state-' + color).textContent = 'OFF';
+                document.getElementById('btn-' + color).classList.remove('active');
+                sendCommand('led', 'off', 'manual');
+                document.getElementById('currentState').textContent = 'IDLE';
+                document.getElementById('countdownNum').textContent = '--';
+                document.getElementById('nextState').textContent = 'Waiting…';
             }
         }
 
-        // ===== POLL ESP STATUS =====
-        async function pollESPStatus() {
-            if (!sb) return;
-            try {
-                const { data, error } = await sb
-                    .from('traffic_logs')
-                    .select('timestamp')
-                    .order('timestamp', { ascending: false })
-                    .limit(1);
-
-                if (error) throw error;
-                if (data && data.length > 0) {
-                    const lastUpdate = new Date(data[0].timestamp);
-                    const now = new Date();
-                    const diff = (now - lastUpdate) / 1000;
-
-                    if (diff < 30) {
-                        updateStatus('esp', 'green');
-                        updateStatus('wifi', 'green');
-                    } else if (diff < 60) {
-                        updateStatus('esp', 'yellow');
-                        updateStatus('wifi', 'yellow');
-                    } else {
-                        updateStatus('esp', 'red');
-                        updateStatus('wifi', 'red');
-                    }
-                }
-            } catch (e) {
-                console.error('Poll error:', e);
+        // ============================================================
+        // BUILT-IN LED
+        // ============================================================
+        function toggleBuiltin() {
+            if (!systemOn) { alert('Turn on the system first.'); return; }
+            // Single active rule
+            if (!builtinOn) {
+                stopAll(false);
+                deactivateAllManual();
+            }
+            builtinOn = !builtinOn;
+            const btn = document.getElementById('builtinToggle');
+            btn.classList.toggle('active', builtinOn);
+            document.getElementById('builtinText').textContent = builtinOn ? 'ON' : 'OFF';
+            sendCommand('builtin_led', builtinOn ? 'on' : 'off', 'manual');
+            if (builtinOn) {
+                activeMode = 'builtin';
+                document.getElementById('currentState').textContent = 'BUILT-IN LED ON';
+                document.getElementById('countdownNum').textContent = '--';
+                document.getElementById('nextState').textContent = 'Board LED Active';
             }
         }
 
-        // ===== INIT =====
-        addLog('SYSTEM', 'Dashboard loaded v2.0', 'SYSTEM');
-        setInterval(pollESPStatus, 10000);
-        pollESPStatus();
+        // ============================================================
+        // HELPERS
+        // ============================================================
+        function stopAll(turnOffSystem = false) {
+            clearInterval(countdownTimer);
+            activeMode = null;
+            deactivateAllManual();
+            if (turnOffSystem) {
+                systemOn = false;
+                document.getElementById('masterToggle').classList.remove('active');
+                document.getElementById('masterText').textContent = 'OFF';
+                setActiveLED(null);
+                document.getElementById('currentState').textContent = 'SYSTEM OFF';
+                document.getElementById('countdownNum').textContent = '--';
+                document.getElementById('nextState').textContent = 'Next: —';
+                const ring = document.getElementById('ringProgress');
+                ring.style.strokeDashoffset = '326.7';
+                ring.className = 'ring-progress';
+            }
+        }
 
-        // Export for global access
-        window.toggleSystem = toggleSystem;
-        window.toggleBuiltin = toggleBuiltin;
-        window.toggleManualLED = toggleManualLED;
-        window.sendCommandWrapper = sendCommandWrapper;
-        window.clearLog = clearLog;
+        function deactivateAllManual() {
+            ['red', 'yellow', 'green'].forEach(c => {
+                manualLEDs[c] = false;
+                document.getElementById('state-' + c).textContent = 'OFF';
+                document.getElementById('btn-' + c).classList.remove('active');
+            });
+            builtinOn = false;
+            document.getElementById('builtinToggle').classList.remove('active');
+            document.getElementById('builtinText').textContent = 'OFF';
+        }
+
+        function setActiveLED(phase) {
+            document.getElementById('led-red').classList.toggle('led-active-red', phase === 'red');
+            document.getElementById('led-yellow').classList.toggle('led-active-yellow', phase === 'yellow');
+            document.getElementById('led-green').classList.toggle('led-active-green', phase === 'green');
+        }
+
+        // ============================================================
+        // LOGS
+        // ============================================================
+        const logs = [];
+        function addLog(event, state, source) {
+            const ts = new Date().toLocaleString();
+            logs.unshift({ ts, event, state, source });
+            if (logs.length > 100) logs.pop();
+            renderLogs();
+        }
+        function renderLogs() {
+            const tbody = document.getElementById('logsBody');
+            document.getElementById('logCount').textContent = logs.length + ' events';
+            if (logs.length === 0) {
+                tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No events recorded yet.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = logs.map(l => `
+    <tr>
+      <td class="td-mono">${l.ts}</td>
+      <td>${l.event}</td>
+      <td><span class="badge badge-${l.state}">${l.state}</span></td>
+      <td class="td-muted">${l.source}</td>
+    </tr>
+  `).join('');
+        }
+        function clearLogs() {
+            logs.length = 0;
+            renderLogs();
+        }
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        initSupabase();
     </script>
 </body>
 

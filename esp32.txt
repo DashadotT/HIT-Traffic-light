@@ -1,280 +1,386 @@
+/*
+ * ============================================================
+ * SmartIoT Dashboard — ESP32 Combined Firmware
+ * Traffic Light Control + Temperature & Humidity (DHT11)
+ * 
+ * Pin Assignments:
+ *   Traffic Light:
+ *     GREEN  → GPIO 13
+ *     YELLOW → GPIO 14
+ *     RED    → GPIO 26
+ *     BUZZER → GPIO 32
+ *   DHT11:
+ *     DATA   → GPIO 15
+ *   Built-in LED → GPIO 2
+ * 
+ * Libraries required:
+ *   - WiFi (built-in ESP32)
+ *   - HTTPClient (built-in ESP32)
+ *   - ArduinoJson (install via Library Manager)
+ *   - DHT sensor library by Adafruit
+ *   - Adafruit Unified Sensor
+ * ============================================================
+ */
+
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include "DHT.h"
 
+// ============================================================
 // WIFI CREDENTIALS
-const char* ssid = "Octat 2.4G";
-const char* password = "Sunshine3030z";
+// ============================================================
+const char* ssid = "FREE";
+const char* password = "123456789";
 
-// SUPABASE
-const char* supabaseUrl = "https://aatapixarmkgyyyctbmm.supabase.co/rest/v1/traffic_light";
-const char* supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhdGFwaXhhcm1rZ3l5eWN0Ym1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MTA0MjIsImV4cCI6MjA5MDE4NjQyMn0.r6-kIZEgDO9A2GAGDs1JRXCNVFBPLk1Nut5XPCVxQf8";
+// ============================================================
+// SUPABASE CONFIG
+// ============================================================
+const char* supabaseUrl = "https://lsoordaciwrwrevvxrbh.supabase.co";  // e.g. https://xxxx.supabase.co
+const char* supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxzb29yZGFjaXdyd3JldnZ4cmJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTk3MDgsImV4cCI6MjA5MDI3NTcwOH0.KMm0yqK2EvZtBxveVumdCZMjIMuiVlZYKfX0i9hA8dI";  // anon/service key
 
-// PINS
-const int red = 17;
-const int yellow = 5;
-const int green = 18;
-const int buzzer = 19;
-const int builtInLed = 2;
+// ============================================================
+// PIN DEFINITIONS
+// ============================================================
+#define PIN_GREEN 13
+#define PIN_YELLOW 14
+#define PIN_RED 26
+#define PIN_BUZZER 32
+#define PIN_BUILTIN 2
+#define PIN_DHT 15
+#define DHTTYPE DHT11
 
-// Variables
-String currentState = "RED";
-int countdownValue = 30;
-bool systemEnabled = true;
-bool manualMode = false;
-String manualLed = "";
-unsigned long lastCheck = 0;
-unsigned long lastBuzzerTime = 0;
-int lastId = 0;
-String lastDisplayedState = "";
-int lastDisplayedCountdown = -1;
+// ============================================================
+// OBJECTS & GLOBALS
+// ============================================================
+DHT dht(PIN_DHT, DHTTYPE);
 
-void setup() {
-  Serial.begin(115200);
-  Serial.println("\n=== TRAFFIC LIGHT SYSTEM ===");
+// Traffic light state
+bool systemOn = false;
+bool builtinLedOn = false;
+String currentLed = "none";  // red | yellow | green | none
+String activeMode = "idle";  // idle | auto | manual | builtin
 
-  pinMode(red, OUTPUT);
-  pinMode(yellow, OUTPUT);
-  pinMode(green, OUTPUT);
-  pinMode(buzzer, OUTPUT);
-  pinMode(builtInLed, OUTPUT);
+// DHT timing
+unsigned long lastDhtRead = 0;
+const unsigned long DHT_INTERVAL = 5000;  // 5 seconds
 
-  // Turn everything OFF initially
-  digitalWrite(red, LOW);
-  digitalWrite(yellow, LOW);
-  digitalWrite(green, LOW);
-  digitalWrite(buzzer, LOW);
-  digitalWrite(builtInLed, LOW);
+// Supabase polling timing
+unsigned long lastCmdPoll = 0;
+const unsigned long POLL_INTERVAL = 1500;  // 1.5 seconds
 
-  // Quick test
-  digitalWrite(buzzer, HIGH);
-  delay(50);
-  digitalWrite(buzzer, LOW);
-  digitalWrite(builtInLed, HIGH);
-  delay(50);
-  digitalWrite(builtInLed, LOW);
+// Last processed command ID to avoid re-processing
+long lastCommandId = -1;
 
+// ============================================================
+// HELPERS: BUZZER
+// ============================================================
+void beep(int freq = 1000, int dur = 150) {
+  tone(PIN_BUZZER, freq, dur);
+  delay(dur + 20);
+  noTone(PIN_BUZZER);
+}
+
+void alertBuzzer() {
+  // Short-short beep for state change
+  beep(1200, 100);
+  delay(80);
+  beep(1200, 100);
+}
+
+void warnBuzzer() {
+  // Long beep for baby environment warning
+  beep(800, 400);
+  delay(100);
+  beep(800, 400); 
+}
+
+// ============================================================
+// HELPERS: LED CONTROL
+// ============================================================
+void allLedsOff() {
+  digitalWrite(PIN_RED, LOW);
+  digitalWrite(PIN_YELLOW, LOW);
+  digitalWrite(PIN_GREEN, LOW);
+}
+
+void setLed(String color) {
+  allLedsOff();
+  if (color == "red") digitalWrite(PIN_RED, HIGH);
+  else if (color == "yellow") digitalWrite(PIN_YELLOW, HIGH);
+  else if (color == "green") digitalWrite(PIN_GREEN, HIGH);
+  currentLed = color;
+}
+
+// ============================================================
+// WIFI CONNECT
+// ============================================================
+void connectWiFi() {
+  Serial.print("[WiFi] Connecting to ");
+  Serial.println(ssid);
   WiFi.begin(ssid, password);
-  Serial.print("Connecting to WiFi");
-
   int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+  while (WiFi.status() != WL_CONNECTED && attempts < 30) {
     delay(500);
     Serial.print(".");
     attempts++;
   }
-
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("\n✓ WiFi Connected");
+    Serial.println("\n[WiFi] Connected: " + WiFi.localIP().toString());
   } else {
-    Serial.println("\n✗ WiFi Failed");
+    Serial.println("\n[WiFi] Failed to connect");
   }
-
-  setLights("RED");
-  getLatestState();
 }
 
+// ============================================================
+// SUPABASE: POST device status
+// ============================================================
+void postDeviceStatus(String device, bool online) {
+  if (WiFi.status() != WL_CONNECTED) return;
+  HTTPClient http;
+  String endpoint = String(supabaseUrl) + "/rest/v1/device_status";
+  http.begin(endpoint);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("apikey", supabaseKey);
+  http.addHeader("Authorization", String("Bearer ") + supabaseKey);
+  http.addHeader("Prefer", "resolution=merge-duplicates");
+
+  StaticJsonDocument<128> doc;
+  doc["device"] = device;
+  doc["online"] = online;
+  doc["updated_at"] = "now()";
+  String body;
+  serializeJson(doc, body);
+
+  int code = http.PUT(body);
+  if (code < 0) {
+    // Try INSERT if PUT fails (first time)
+    http.end();
+    http.begin(endpoint);
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("apikey", supabaseKey);
+    http.addHeader("Authorization", String("Bearer ") + supabaseKey);
+    http.POST(body);
+  }
+  http.end();
+}
+
+// ============================================================
+// SUPABASE: INSERT sensor reading (DHT)
+// ============================================================
+void postSensorReading(float temp, float hum) {
+  if (WiFi.status() != WL_CONNECTED) return;
+  HTTPClient http;
+  String endpoint = String(supabaseUrl) + "/rest/v1/sensor_readings";
+  http.begin(endpoint);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("apikey", supabaseKey);
+  http.addHeader("Authorization", String("Bearer ") + supabaseKey);
+
+  StaticJsonDocument<128> doc;
+  doc["temperature"] = temp;
+  doc["humidity"] = hum;
+  String body;
+  serializeJson(doc, body);
+
+  int code = http.POST(body);
+  Serial.printf("[DHT] POST → %d  T=%.1f  H=%.0f%%\n", code, temp, hum);
+  http.end();
+}
+
+// ============================================================
+// SUPABASE: FETCH latest traffic command
+// ============================================================
+void fetchTrafficCommand() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  HTTPClient http;
+
+  // Get latest unprocessed command
+  String endpoint = String(supabaseUrl)
+                    + "/rest/v1/traffic_commands?select=id,command,value&order=id.desc&limit=1";
+  http.begin(endpoint);
+  http.addHeader("apikey", supabaseKey);
+  http.addHeader("Authorization", String("Bearer ") + supabaseKey);
+  http.addHeader("Accept", "application/json");
+
+  int code = http.GET();
+  if (code == 200) {
+    String payload = http.getString();
+    DynamicJsonDocument doc(256);
+    DeserializationError err = deserializeJson(doc, payload);
+    if (!err && doc.is<JsonArray>() && doc.size() > 0) {
+      long id = doc[0]["id"];
+      String command = doc[0]["command"].as<String>();
+      String value = doc[0]["value"].as<String>();
+
+      if (id != lastCommandId) {
+        lastCommandId = id;
+        processCommand(command, value);
+      }
+    }
+  }
+  http.end();
+}
+
+// ============================================================
+// PROCESS COMMAND FROM DASHBOARD
+// ============================================================
+void processCommand(String command, String value) {
+  Serial.printf("[CMD] %s = %s\n", command.c_str(), value.c_str());
+
+  if (command == "system") {
+    if (value == "on") {
+      systemOn = true;
+      activeMode = "auto";
+      Serial.println("[System] ON");
+    } else {
+      systemOn = false;
+      activeMode = "idle";
+      allLedsOff();
+      digitalWrite(PIN_BUILTIN, LOW);
+      Serial.println("[System] OFF");
+    }
+  }
+
+  else if (command == "led") {
+    if (!systemOn) return;
+    if (value == "off") {
+      allLedsOff();
+      currentLed = "none";
+      activeMode = "idle";
+    } else {
+      setLed(value);
+      activeMode = "manual";
+      alertBuzzer();
+    }
+  }
+
+  else if (command == "builtin_led") {
+    if (!systemOn) return;
+    bool on = (value == "on");
+    digitalWrite(PIN_BUILTIN, on ? HIGH : LOW);
+    builtinLedOn = on;
+    activeMode = on ? "builtin" : "idle";
+  }
+
+  else if (command == "buzzer") {
+    if (!systemOn) return;
+    if (value == "beep") alertBuzzer();
+  }
+}
+
+// ============================================================
+// READ DHT SENSOR
+// ============================================================
+void readDHT() {
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+
+  if (isnan(h) || isnan(t)) {
+    Serial.println("[DHT] Read failed");
+    return;
+  }
+
+  Serial.printf("[DHT] Temp: %.1f°C  Humidity: %.0f%%\n", t, h);
+  postSensorReading(t, h);
+
+  // Check baby safety
+  bool tempOk = (t >= 24.0 && t <= 27.0);
+  bool humOk = (h >= 40.0 && h <= 60.0);
+
+  if (!tempOk || !humOk) {
+    Serial.println("[DHT] WARNING: Conditions not ideal for baby!");
+    warnBuzzer();
+  }
+}
+
+// ============================================================
+// SETUP
+// ============================================================
+void setup() {
+  Serial.begin(115200);
+  Serial.println("\n[Boot] SmartIoT ESP32 Firmware");
+
+  // Pin modes
+  pinMode(PIN_RED, OUTPUT);
+  pinMode(PIN_YELLOW, OUTPUT);
+  pinMode(PIN_GREEN, OUTPUT);
+  pinMode(PIN_BUZZER, OUTPUT);
+  pinMode(PIN_BUILTIN, OUTPUT);
+  allLedsOff();
+  digitalWrite(PIN_BUILTIN, LOW);
+
+  // DHT
+  dht.begin();
+
+  // WiFi
+  connectWiFi();
+
+  // Announce device online
+  if (WiFi.status() == WL_CONNECTED) {
+    postDeviceStatus("esp32-traffic", true);
+    postDeviceStatus("esp32-dht", true);
+    // Startup beep
+    beep(1500, 100);
+    delay(80);
+    beep(1800, 100);
+  }
+}
+
+// ============================================================
+// LOOP
+// ============================================================
 void loop() {
-  unsigned long currentMillis = millis();
+  unsigned long now = millis();
 
-  if (currentMillis - lastCheck >= 100) {
-    lastCheck = currentMillis;
-    checkForUpdates();
+  // Reconnect WiFi if dropped
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[WiFi] Reconnecting…");
+    WiFi.reconnect();
+    delay(2000);
+    return;
   }
 
-  handleBuzzer();
+  // Poll commands from Supabase dashboard
+  if (now - lastCmdPoll >= POLL_INTERVAL) {
+    lastCmdPoll = now;
+    fetchTrafficCommand();
+  }
+
+  // Read DHT every 5 seconds
+  if (now - lastDhtRead >= DHT_INTERVAL) {
+    lastDhtRead = now;
+    readDHT();
+  }
+
+  delay(50);  // Small yield
 }
 
-void shortBeep() {
-  digitalWrite(buzzer, HIGH);
-  delay(80);
-  digitalWrite(buzzer, LOW);
-}
-
-void handleBuzzer() {
-  unsigned long currentMillis = millis();
-
-  bool shouldBuzz = false;
-
-  // Only buzz in automatic mode during last 3 seconds of red
-  if (systemEnabled && !manualMode && currentState == "RED" && countdownValue <= 3 && countdownValue > 0) {
-    shouldBuzz = true;
-  }
-
-  // Manual buzzer test (exclusive)
-  if (manualMode && manualLed == "BUZZER") {
-    shouldBuzz = true;
-  }
-
-  if (shouldBuzz) {
-    int beepInterval = (countdownValue == 1 && !manualMode) ? 100 : 200;
-    if (currentMillis - lastBuzzerTime >= beepInterval) {
-      lastBuzzerTime = currentMillis;
-      static bool buzzerState = false;
-      buzzerState = !buzzerState;
-      digitalWrite(buzzer, buzzerState ? HIGH : LOW);
-    }
-  } else {
-    digitalWrite(buzzer, LOW);
-  }
-}
-
-void checkForUpdates() {
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-    String url = String(supabaseUrl) + "?order=id.desc&limit=1";
-    http.begin(url);
-    http.addHeader("apikey", supabaseKey);
-    http.addHeader("Authorization", String("Bearer ") + supabaseKey);
-    http.setTimeout(500);
-
-    int httpResponseCode = http.GET();
-
-    if (httpResponseCode > 0) {
-      String payload = http.getString();
-      StaticJsonDocument<1024> doc;
-      DeserializationError error = deserializeJson(doc, payload);
-
-      if (!error) {
-        JsonArray array = doc.as<JsonArray>();
-        if (array.size() > 0) {
-          JsonObject obj = array[0];
-          int currentId = obj["id"].as<int>();
-
-          if (currentId > lastId) {
-            lastId = currentId;
-
-            String newState = obj["state"].as<String>();
-            int newCountdown = obj["countdown"].as<int>();
-            bool newSystemEnabled = obj["system_enabled"].as<bool>();
-            bool newManualMode = obj["manual_mode"].as<bool>();
-            String newManualLed = obj["manual_led"].as<String>();
-
-            bool stateChanged = (newState != currentState);
-
-            systemEnabled = newSystemEnabled;
-            manualMode = newManualMode;
-            manualLed = newManualLed;
-            currentState = newState;
-            countdownValue = newCountdown;
-
-            // Handle all outputs based on mode
-            if (systemEnabled && !manualMode) {
-              // AUTOMATIC MODE - Follow traffic light sequence
-              digitalWrite(builtInLed, LOW);  // Turn off ESP LED
-              setLights(currentState);
-
-              if (stateChanged) {
-                shortBeep();
-                Serial.print("▶ AUTO: ");
-                Serial.print(currentState);
-                Serial.println(" (BEEP)");
-              } else {
-                Serial.print("  AUTO: ");
-                Serial.print(currentState);
-                Serial.print(" | ");
-                Serial.println(countdownValue);
-              }
-            } else if (manualMode) {
-              // MANUAL MODE - Exclusive control
-              // First, turn EVERYTHING OFF
-              digitalWrite(red, LOW);
-              digitalWrite(yellow, LOW);
-              digitalWrite(green, LOW);
-              digitalWrite(buzzer, LOW);
-              digitalWrite(builtInLed, LOW);
-
-              // Then turn on ONLY the selected function
-              if (manualLed == "RED") {
-                digitalWrite(red, HIGH);
-                Serial.println("🔴 MANUAL: RED LIGHT ONLY");
-              } else if (manualLed == "YELLOW") {
-                digitalWrite(yellow, HIGH);
-                Serial.println("🟡 MANUAL: YELLOW LIGHT ONLY");
-              } else if (manualLed == "GREEN") {
-                digitalWrite(green, HIGH);
-                Serial.println("🟢 MANUAL: GREEN LIGHT ONLY");
-              } else if (manualLed == "BUZZER") {
-                // Buzzer handled in handleBuzzer()
-                Serial.println("🔊 MANUAL: BUZZER TEST");
-              } else if (manualLed == "LED") {
-                digitalWrite(builtInLed, HIGH);
-                Serial.println("💡 MANUAL: ESP32 LED ON");
-              }
-              // If manualLed is empty or unrecognized, all remain OFF
-            } else if (!systemEnabled) {
-              // SYSTEM DISABLED - Everything OFF
-              digitalWrite(red, LOW);
-              digitalWrite(yellow, LOW);
-              digitalWrite(green, LOW);
-              digitalWrite(buzzer, LOW);
-              digitalWrite(builtInLed, LOW);
-              Serial.println("⭕ SYSTEM DISABLED");
-            }
-
-            lastDisplayedState = currentState;
-            lastDisplayedCountdown = countdownValue;
-          }
-        }
-      }
-    }
-    http.end();
-  }
-}
-
-void getLatestState() {
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-    String url = String(supabaseUrl) + "?order=id.desc&limit=1";
-    http.begin(url);
-    http.addHeader("apikey", supabaseKey);
-    http.addHeader("Authorization", String("Bearer ") + supabaseKey);
-    http.setTimeout(500);
-
-    int httpResponseCode = http.GET();
-
-    if (httpResponseCode > 0) {
-      String payload = http.getString();
-      StaticJsonDocument<1024> doc;
-      DeserializationError error = deserializeJson(doc, payload);
-
-      if (!error) {
-        JsonArray array = doc.as<JsonArray>();
-        if (array.size() > 0) {
-          JsonObject obj = array[0];
-          lastId = obj["id"].as<int>();
-          currentState = obj["state"].as<String>();
-          countdownValue = obj["countdown"].as<int>();
-          systemEnabled = obj["system_enabled"].as<bool>();
-          manualMode = obj["manual_mode"].as<bool>();
-          manualLed = obj["manual_led"].as<String>();
-
-          setLights(currentState);
-          lastDisplayedState = currentState;
-          lastDisplayedCountdown = countdownValue;
-
-          Serial.println("✓ System Ready");
-          Serial.print("  State: ");
-          Serial.println(currentState);
-          Serial.print("  Countdown: ");
-          Serial.println(countdownValue);
-        }
-      }
-    }
-    http.end();
-  }
-}
-
-void setLights(String state) {
-  digitalWrite(red, LOW);
-  digitalWrite(yellow, LOW);
-  digitalWrite(green, LOW);
-
-  if (state == "RED") {
-    digitalWrite(red, HIGH);
-  } else if (state == "YELLOW") {
-    digitalWrite(yellow, HIGH);
-  } else if (state == "GREEN") {
-    digitalWrite(green, HIGH);
-  }
-}
+/*
+ * ============================================================
+ * SUPABASE TABLE SCHEMAS REQUIRED:
+ * ============================================================
+ *
+ * 1. traffic_commands
+ *    id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY
+ *    command    TEXT NOT NULL
+ *    value      TEXT NOT NULL
+ *    source     TEXT DEFAULT 'dashboard'
+ *    created_at TIMESTAMPTZ DEFAULT NOW()
+ *
+ * 2. sensor_readings
+ *    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY
+ *    temperature FLOAT NOT NULL
+ *    humidity    FLOAT NOT NULL
+ *    created_at  TIMESTAMPTZ DEFAULT NOW()
+ *
+ * 3. device_status
+ *    id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY
+ *    device     TEXT UNIQUE NOT NULL
+ *    online     BOOLEAN DEFAULT FALSE
+ *    updated_at TIMESTAMPTZ DEFAULT NOW()
+ *
+ * Enable Row Level Security + allow anon read/write for these tables.
+ * Enable Supabase Realtime for sensor_readings and device_status.
+ * ============================================================
+ */

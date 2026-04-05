@@ -1,121 +1,139 @@
 -- ============================================================
---  SmartNode — Supabase SQL Setup (Simple Integer IDs)
---  Run this once in your Supabase SQL Editor
+-- SmartIoT Dashboard — Supabase Schema
+-- Paste this entire file into Supabase → SQL Editor → Run
 -- ============================================================
--- 1. TRAFFIC STATE (with fixed ID 1)
-create table
-    if not exists traffic_state (
-        id INT primary key default 1,
-        phase TEXT default 'off',
-        countdown INT default 0,
-        updated_at TIMESTAMPTZ default NOW ()
-    );
 
--- Clear any existing data and insert default
-delete from traffic_state;
-
-insert into
-    traffic_state (id, phase, countdown, updated_at)
-values
-    (1, 'off', 0, NOW ());
-
--- 2. TRAFFIC COMMANDS (dashboard → ESP32) - Using SERIAL for auto-increment
-create table
-    if not exists traffic_commands (
-        id SERIAL primary key,
-        command TEXT not null,
-        payload JSONB default '{}',
-        consumed BOOLEAN default false,
-        created_at TIMESTAMPTZ default NOW ()
-    );
-
-create index IF not exists idx_cmds_consumed on traffic_commands (consumed);
-
-create index IF not exists idx_cmds_created on traffic_commands (created_at);
-
--- 3. TRAFFIC EVENT LOG - Using SERIAL for auto-increment
-create table
-    if not exists traffic_logs (
-        id SERIAL primary key,
-        event TEXT,
-        details TEXT,
-        phase TEXT,
-        timestamp TIMESTAMPTZ default NOW ()
-    );
-
--- 4. DHT11 SENSOR READINGS - Using SERIAL for auto-increment
-create table
-    if not exists sensor_readings (
-        id SERIAL primary key,
-        temperature FLOAT,
-        humidity FLOAT,
-        timestamp TIMESTAMPTZ default NOW ()
-    );
 
 -- ============================================================
---  ENABLE REALTIME
+-- 1. TRAFFIC COMMANDS
+--    Dashboard sends commands here; ESP32 polls and reads them.
 -- ============================================================
-alter publication supabase_realtime add table traffic_commands;
+CREATE TABLE IF NOT EXISTS traffic_commands (
+  id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  command    TEXT NOT NULL,        -- e.g. 'system', 'led', 'builtin_led', 'buzzer'
+  value      TEXT NOT NULL,        -- e.g. 'on', 'off', 'red', 'yellow', 'green', 'beep'
+  source     TEXT DEFAULT 'dashboard',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-alter publication supabase_realtime add table traffic_state;
+-- Index for fast latest-row lookup by ESP32
+CREATE INDEX IF NOT EXISTS idx_traffic_commands_id ON traffic_commands (id DESC);
 
-alter publication supabase_realtime add table sensor_readings;
-
-alter publication supabase_realtime add table traffic_logs;
-
--- ============================================================
---  ROW LEVEL SECURITY (open for ESP32 anon key access)
--- ============================================================
-alter table traffic_state ENABLE row LEVEL SECURITY;
-
-alter table traffic_commands ENABLE row LEVEL SECURITY;
-
-alter table traffic_logs ENABLE row LEVEL SECURITY;
-
-alter table sensor_readings ENABLE row LEVEL SECURITY;
-
-drop policy IF exists "open_traffic_state" on traffic_state;
-
-drop policy IF exists "open_traffic_commands" on traffic_commands;
-
-drop policy IF exists "open_traffic_logs" on traffic_logs;
-
-drop policy IF exists "open_sensor_readings" on sensor_readings;
-
-create policy "open_traffic_state" on traffic_state for all using (true)
-with
-    check (true);
-
-create policy "open_traffic_commands" on traffic_commands for all using (true)
-with
-    check (true);
-
-create policy "open_traffic_logs" on traffic_logs for all using (true)
-with
-    check (true);
-
-create policy "open_sensor_readings" on sensor_readings for all using (true)
-with
-    check (true);
 
 -- ============================================================
---  OPTIONAL: Create a view for easy monitoring
+-- 2. SENSOR READINGS
+--    ESP32 inserts temperature + humidity every 5 seconds.
+--    Dashboard reads and charts these in real-time.
 -- ============================================================
-create
-or replace view traffic_status as
-select
-    ts.phase,
-    ts.countdown,
-    ts.updated_at as state_updated,
-    COUNT(tc.id) filter (
-        where
-            tc.consumed = false
-    ) as pending_commands
-from
-    traffic_state ts
-    left join traffic_commands tc on tc.consumed = false
-group by
-    ts.id,
-    ts.phase,
-    ts.countdown,
-    ts.updated_at;
+CREATE TABLE IF NOT EXISTS sensor_readings (
+  id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  temperature FLOAT NOT NULL,
+  humidity    FLOAT NOT NULL,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for fast time-ordered queries
+CREATE INDEX IF NOT EXISTS idx_sensor_readings_created ON sensor_readings (created_at DESC);
+
+
+-- ============================================================
+-- 3. DEVICE STATUS
+--    ESP32 updates its online/offline status here.
+--    Dashboard subscribes to this for the status bar indicators.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS device_status (
+  id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  device     TEXT UNIQUE NOT NULL,  -- 'esp32-traffic' or 'esp32-dht'
+  online     BOOLEAN DEFAULT FALSE,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Seed the two device rows so ESP32 can do PUT (upsert) instead of INSERT
+INSERT INTO device_status (device, online)
+VALUES ('esp32-traffic', false), ('esp32-dht', false)
+ON CONFLICT (device) DO NOTHING;
+
+
+-- ============================================================
+-- ROW LEVEL SECURITY (RLS)
+-- Allow anonymous read + write for all three tables.
+-- Required for the dashboard and ESP32 to access without login.
+-- ============================================================
+
+ALTER TABLE traffic_commands ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sensor_readings  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE device_status    ENABLE ROW LEVEL SECURITY;
+
+-- traffic_commands: anon can read and insert
+CREATE POLICY "anon read traffic_commands"
+  ON traffic_commands FOR SELECT TO anon USING (true);
+
+CREATE POLICY "anon insert traffic_commands"
+  ON traffic_commands FOR INSERT TO anon WITH CHECK (true);
+
+-- sensor_readings: anon can read and insert
+CREATE POLICY "anon read sensor_readings"
+  ON sensor_readings FOR SELECT TO anon USING (true);
+
+CREATE POLICY "anon insert sensor_readings"
+  ON sensor_readings FOR INSERT TO anon WITH CHECK (true);
+
+-- device_status: anon can read, insert, and update
+CREATE POLICY "anon read device_status"
+  ON device_status FOR SELECT TO anon USING (true);
+
+CREATE POLICY "anon insert device_status"
+  ON device_status FOR INSERT TO anon WITH CHECK (true);
+
+CREATE POLICY "anon update device_status"
+  ON device_status FOR UPDATE TO anon USING (true);
+
+
+-- ============================================================
+-- REALTIME
+-- Enable real-time subscriptions for live dashboard updates.
+-- Run these one at a time if needed.
+-- ============================================================
+
+ALTER PUBLICATION supabase_realtime ADD TABLE sensor_readings;
+ALTER PUBLICATION supabase_realtime ADD TABLE device_status;
+ALTER PUBLICATION supabase_realtime ADD TABLE traffic_commands;
+
+
+-- ============================================================
+-- OPTIONAL: Auto-cleanup old traffic commands
+-- Keeps the table small; ESP32 only needs the latest row.
+-- Deletes commands older than 1 hour automatically.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION cleanup_old_commands()
+RETURNS void LANGUAGE sql AS $$
+  DELETE FROM traffic_commands
+  WHERE created_at < NOW() - INTERVAL '1 hour';
+$$;
+
+-- Run cleanup manually anytime:
+-- SELECT cleanup_old_commands();
+
+
+-- ============================================================
+-- OPTIONAL: Auto-cleanup old sensor readings
+-- Keeps only the last 7 days of DHT data.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION cleanup_old_readings()
+RETURNS void LANGUAGE sql AS $$
+  DELETE FROM sensor_readings
+  WHERE created_at < NOW() - INTERVAL '7 days';
+$$;
+
+-- Run cleanup manually anytime:
+-- SELECT cleanup_old_readings();
+
+
+-- ============================================================
+-- VERIFY: Check all tables exist
+-- ============================================================
+SELECT table_name FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_name IN ('traffic_commands', 'sensor_readings', 'device_status');

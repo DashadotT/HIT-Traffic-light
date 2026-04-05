@@ -4,29 +4,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SmartNode Control Center</title>
+  <title>SmartHome IoT — Dashboard Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
-    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400&display=swap"
-    rel="stylesheet" />
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
+    rel="stylesheet">
   <style>
+    :root {
+      --bg: #080c10;
+      --surface: #0d1318;
+      --border: rgba(255, 255, 255, 0.07);
+      --text: #e8edf2;
+      --muted: #6b7a8a;
+      --accent-tl: #f59e0b;
+      --accent-th: #22d3ee;
+      --glow-tl: rgba(245, 158, 11, 0.25);
+      --glow-th: rgba(34, 211, 238, 0.25);
+    }
+
     *,
     *::before,
     *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-    }
-
-    :root {
-      --bg: #050810;
-      --bg2: #080d1a;
-      --accent: #00f5ff;
-      --accent2: #ff3e6c;
-      --accent3: #b8ff3e;
-      --text: #e8edf5;
-      --muted: #4a5568;
-      --card: rgba(255, 255, 255, 0.03);
-      --border: rgba(0, 245, 255, 0.15);
     }
 
     html {
@@ -36,46 +37,36 @@
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: 'Rajdhani', sans-serif;
-      overflow-x: hidden;
+      font-family: 'DM Sans', sans-serif;
       min-height: 100vh;
+      overflow-x: hidden;
     }
 
-    /* NOISE OVERLAY */
-    body::before {
-      content: '';
+    /* === BACKGROUND MESH === */
+    .bg-mesh {
       position: fixed;
       inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-      pointer-events: none;
       z-index: 0;
-      opacity: 0.4;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 60% 50% at 15% 20%, rgba(245, 158, 11, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 60% at 85% 75%, rgba(34, 211, 238, 0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(255, 255, 255, 0.02) 0%, transparent 70%);
     }
 
-    /* GRID LINES */
-    .grid-bg {
+    .bg-grid {
       position: fixed;
       inset: 0;
       z-index: 0;
       pointer-events: none;
       background-image:
-        linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
       background-size: 60px 60px;
-      animation: gridDrift 20s linear infinite;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
     }
 
-    @keyframes gridDrift {
-      0% {
-        background-position: 0 0;
-      }
-
-      100% {
-        background-position: 60px 60px;
-      }
-    }
-
-    /* NAV */
+    /* === NAV === */
     nav {
       position: fixed;
       top: 0;
@@ -85,19 +76,23 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 20px 48px;
-      background: rgba(5, 8, 16, 0.8);
-      backdrop-filter: blur(12px);
+      padding: 0 clamp(20px, 5vw, 80px);
+      height: 64px;
+      background: rgba(8, 12, 16, 0.8);
+      backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border);
     }
 
     .nav-logo {
-      font-family: 'Orbitron', monospace;
-      font-size: 1rem;
+      font-family: 'Syne', sans-serif;
       font-weight: 800;
-      letter-spacing: 0.2em;
-      color: var(--accent);
-      text-shadow: 0 0 20px var(--accent);
+      font-size: 1.1rem;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .nav-logo span {
+      color: var(--accent-tl);
     }
 
     .nav-links {
@@ -108,39 +103,18 @@
     .nav-links a {
       font-size: 0.85rem;
       font-weight: 500;
-      letter-spacing: 0.12em;
-      color: white;
+      color: var(--muted);
       text-decoration: none;
-      text-transform: uppercase;
       transition: color 0.2s;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
     }
 
     .nav-links a:hover {
-      color: var(--accent);
+      color: var(--text);
     }
 
-    /* Overlay for mobile menu */
-    .nav-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.7);
-      opacity: 10;
-      visibility: hidden;
-      transition: opacity 0.3s ease;
-      z-index: 90;
-    }
-
-    .nav-overlay.active {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    /* Adjust nav-links z-index to be above overlay */
-    .nav-links {
-      z-index: 99;
-    }
-
-    /* HERO */
+    /* === HERO === */
     .hero {
       position: relative;
       z-index: 1;
@@ -149,34 +123,33 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      padding: 80px clamp(20px, 5vw, 80px) 60px;
       text-align: center;
-      padding: 100px 24px 60px;
-      overflow: hidden;
     }
 
     .hero-badge {
       display: inline-flex;
       align-items: center;
       gap: 8px;
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      border-radius: 100px;
       padding: 6px 16px;
-      background: rgba(0, 245, 255, 0.07);
-      border: 1px solid rgba(0, 245, 255, 0.3);
-      border-radius: 999px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      letter-spacing: 0.15em;
-      color: var(--accent);
-      margin-bottom: 36px;
-      animation: fadeDown 0.8s ease both;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--accent-tl);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+      animation: fadeUp 0.8s ease both;
     }
 
     .hero-badge::before {
       content: '';
       width: 6px;
       height: 6px;
+      background: var(--accent-tl);
       border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 8px var(--accent);
       animation: pulse 2s infinite;
     }
 
@@ -185,208 +158,106 @@
       0%,
       100% {
         opacity: 1;
+        transform: scale(1);
       }
 
       50% {
-        opacity: 0.3;
+        opacity: 0.5;
+        transform: scale(0.8);
       }
     }
 
     .hero h1 {
-      font-family: 'Orbitron', monospace;
+      font-family: 'Syne', sans-serif;
       font-size: clamp(2.5rem, 8vw, 6rem);
-      font-weight: 900;
-      line-height: 1;
-      letter-spacing: -0.02em;
-      margin-bottom: 16px;
-      animation: fadeDown 0.9s 0.1s ease both;
-    }
-
-    .hero h1 span {
-      color: var(--accent);
-      text-shadow: 0 0 40px var(--accent);
-    }
-
-    .hero h1 em {
-      color: var(--accent2);
-      font-style: normal;
-      text-shadow: 0 0 40px var(--accent2);
-    }
-
-    .hero-sub {
-      font-size: clamp(1rem, 2.5vw, 1.3rem);
-      font-weight: 300;
-      color: rgba(232, 237, 245, 0.55);
-      letter-spacing: 0.08em;
-      max-width: 600px;
-      margin: 0 auto 52px;
-      animation: fadeDown 1s 0.2s ease both;
-    }
-
-    .hero-cta {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-      justify-content: center;
-      animation: fadeDown 1s 0.3s ease both;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 14px 32px;
-      font-family: 'Rajdhani', sans-serif;
-      font-size: 0.9rem;
-      font-weight: 600;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      text-decoration: none;
-      border-radius: 4px;
-      transition: all 0.25s;
-      cursor: pointer;
-    }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #050810;
-      border: 2px solid var(--accent);
-      box-shadow: 0 0 30px rgba(0, 245, 255, 0.3);
-    }
-
-    .btn-primary:hover {
-      background: transparent;
-      color: var(--accent);
-      box-shadow: 0 0 50px rgba(0, 245, 255, 0.5);
-    }
-
-    .btn-secondary {
-      background: transparent;
-      color: var(--accent2);
-      border: 2px solid var(--accent2);
-    }
-
-    .btn-secondary:hover {
-      background: var(--accent2);
-      color: #050810;
-      box-shadow: 0 0 30px rgba(255, 62, 108, 0.4);
-    }
-
-    /* GLOW ORB */
-    .orb {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(80px);
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .orb1 {
-      width: 500px;
-      height: 500px;
-      top: -100px;
-      left: -150px;
-      background: radial-gradient(circle, rgba(0, 245, 255, 0.12), transparent 70%);
-      animation: orbFloat 8s ease-in-out infinite;
-    }
-
-    .orb2 {
-      width: 400px;
-      height: 400px;
-      bottom: -100px;
-      right: -100px;
-      background: radial-gradient(circle, rgba(255, 62, 108, 0.1), transparent 70%);
-      animation: orbFloat 10s ease-in-out infinite reverse;
-    }
-
-    @keyframes orbFloat {
-
-      0%,
-      100% {
-        transform: translate(0, 0);
-      }
-
-      50% {
-        transform: translate(30px, -30px);
-      }
-    }
-
-    /* TECH LINE DECORATION */
-    .tech-line {
-      width: 200px;
-      height: 1px;
-      margin: 48px auto;
-      background: linear-gradient(90deg, transparent, var(--accent), transparent);
-      animation: fadeDown 1s 0.4s ease both;
-    }
-
-    /* DEVICES GRID */
-    .section {
-      position: relative;
-      z-index: 1;
-      padding: 80px 24px;
-    }
-
-    .section-label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      letter-spacing: 0.2em;
-      color: var(--accent);
-      text-transform: uppercase;
-      margin-bottom: 12px;
-    }
-
-    .section-title {
-      font-family: 'Orbitron', monospace;
-      font-size: clamp(1.5rem, 4vw, 2.5rem);
       font-weight: 800;
-      margin-bottom: 48px;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+      animation: fadeUp 0.8s 0.1s ease both;
     }
 
+    .hero h1 .line-tl {
+      color: var(--accent-tl);
+    }
+
+    .hero h1 .line-th {
+      color: var(--accent-th);
+    }
+
+    .hero p {
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      font-weight: 300;
+      color: var(--muted);
+      max-width: 560px;
+      line-height: 1.7;
+      margin-bottom: 56px;
+      animation: fadeUp 0.8s 0.2s ease both;
+    }
+
+    /* === CARDS === */
     .cards {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 24px;
-      max-width: 1100px;
-      margin: 0 auto;
+      width: 100%;
+      max-width: 800px;
+      animation: fadeUp 0.8s 0.3s ease both;
     }
 
     .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 32px;
       position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px 32px;
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+      transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
       overflow: hidden;
-      transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
-    }
-
-    .card:hover {
-      transform: translateY(-6px);
-      border-color: var(--accent);
-      box-shadow: 0 20px 60px rgba(0, 245, 255, 0.1);
+      display: block;
     }
 
     .card::before {
       content: '';
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      inset: 0;
+      border-radius: 20px;
       opacity: 0;
       transition: opacity 0.3s;
+    }
+
+    .card-tl::before {
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, var(--glow-tl), transparent 70%);
+    }
+
+    .card-th::before {
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, var(--glow-th), transparent 70%);
+    }
+
+    .card:hover {
+      transform: translateY(-6px);
     }
 
     .card:hover::before {
       opacity: 1;
     }
 
+    .card-tl:hover {
+      border-color: rgba(245, 158, 11, 0.4);
+      box-shadow: 0 20px 60px rgba(245, 158, 11, 0.1);
+    }
+
+    .card-th:hover {
+      border-color: rgba(34, 211, 238, 0.4);
+      box-shadow: 0 20px 60px rgba(34, 211, 238, 0.1);
+    }
+
     .card-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 10px;
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -394,244 +265,137 @@
       margin-bottom: 20px;
     }
 
-    .card-icon.tl {
-      background: rgba(184, 255, 62, 0.1);
-      border: 1px solid rgba(184, 255, 62, 0.3);
+    .card-tl .card-icon {
+      background: rgba(245, 158, 11, 0.15);
     }
 
-    .card-icon.th {
-      background: rgba(0, 245, 255, 0.1);
-      border: 1px solid rgba(0, 245, 255, 0.3);
+    .card-th .card-icon {
+      background: rgba(34, 211, 238, 0.15);
     }
 
-    .card-tag {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.65rem;
-      color: var(--muted);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      margin-bottom: 8px;
-    }
-
-    .card h3 {
-      font-family: 'Orbitron', monospace;
-      font-size: 1.1rem;
+    .card h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.25rem;
       font-weight: 700;
-      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
     }
 
     .card p {
-      color: rgba(232, 237, 245, 0.5);
-      font-size: 0.9rem;
-      line-height: 1.6;
-    }
-
-    .card-footer {
-      margin-top: 24px;
-      padding-top: 20px;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 4px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.65rem;
+      font-size: 0.875rem;
+      font-weight: 300;
       color: var(--muted);
-    }
-
-    .chip.live {
-      color: var(--accent3);
-    }
-
-    .chip.live::before {
-      content: '';
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: var(--accent3);
-      animation: pulse 2s infinite;
-    }
-
-    /* DASHBOARD CARDS */
-    .dashboards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 24px;
-      max-width: 900px;
-      margin: 0 auto;
-    }
-
-    .dash-card {
-      position: relative;
-      border-radius: 16px;
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      cursor: pointer;
-      text-decoration: none;
-      display: block;
-      transition: all 0.3s;
-    }
-
-    .dash-card:hover {
-      transform: translateY(-8px);
-    }
-
-    .dash-card-inner {
-      padding: 40px 32px;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
-    }
-
-    .dash-card.traffic .dash-card-inner {
-      background: linear-gradient(135deg, rgba(184, 255, 62, 0.06), rgba(255, 62, 108, 0.04));
-    }
-
-    .dash-card.temp .dash-card-inner {
-      background: linear-gradient(135deg, rgba(0, 245, 255, 0.06), rgba(0, 100, 255, 0.04));
-    }
-
-    .dash-card:hover {
-      border-color: var(--accent);
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
-    }
-
-    .dash-card.traffic:hover {
-      border-color: var(--accent3);
-      box-shadow: 0 30px 80px rgba(184, 255, 62, 0.1);
-    }
-
-    .dash-card.temp:hover {
-      border-color: var(--accent);
-      box-shadow: 0 30px 80px rgba(0, 245, 255, 0.1);
-    }
-
-    .dash-number {
-      font-family: 'Orbitron', monospace;
-      font-size: 4rem;
-      font-weight: 900;
-      opacity: 0.07;
-      position: absolute;
-      top: 12px;
-      right: 24px;
-      line-height: 1;
-    }
-
-    .dash-card.traffic .dash-number {
-      color: var(--accent3);
-    }
-
-    .dash-card.temp .dash-number {
-      color: var(--accent);
-    }
-
-    .dash-label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.65rem;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      margin-bottom: 16px;
-    }
-
-    .dash-card.traffic .dash-label {
-      color: var(--accent3);
-    }
-
-    .dash-card.temp .dash-label {
-      color: var(--accent);
-    }
-
-    .dash-title {
-      font-family: 'Orbitron', monospace;
-      font-size: 1.4rem;
-      font-weight: 800;
-      margin-bottom: 12px;
-      color: white;
-    }
-
-    .dash-desc {
-      color: rgba(232, 237, 245, 0.45);
-      font-size: 0.9rem;
       line-height: 1.6;
-      margin-bottom: 28px;
+      margin-bottom: 24px;
     }
 
-    .dash-arrow {
+    .card-cta {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 600;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
     }
 
-    .dash-card.traffic .dash-arrow {
-      color: var(--accent3);
+    .card-tl .card-cta {
+      color: var(--accent-tl);
     }
 
-    .dash-card.temp .dash-arrow {
-      color: var(--accent);
+    .card-th .card-cta {
+      color: var(--accent-th);
     }
 
-    /* SPECS */
+    .card-cta svg {
+      transition: transform 0.2s;
+    }
+
+    .card:hover .card-cta svg {
+      transform: translateX(4px);
+    }
+
+    /* === SPECS === */
+    .specs {
+      position: relative;
+      z-index: 1;
+      padding: 80px clamp(20px, 5vw, 80px);
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 40px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      max-width: 60px;
+      height: 1px;
+      background: var(--border);
+    }
+
     .specs-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 2px;
-      max-width: 900px;
-      margin: 0 auto;
+      gap: 1px;
+      background: var(--border);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 16px;
       overflow: hidden;
     }
 
     .spec-item {
+      background: var(--surface);
       padding: 28px 24px;
-      background: rgba(255, 255, 255, 0.02);
-      border-right: 1px solid var(--border);
     }
 
-    .spec-item:last-child {
-      border-right: none;
-    }
-
-    .spec-val {
-      font-family: 'Orbitron', monospace;
-      font-size: 2rem;
-      font-weight: 800;
-      color: var(--accent);
-    }
-
-    .spec-key {
-      font-size: 0.8rem;
+    .spec-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
       color: var(--muted);
-      margin-top: 4px;
-      letter-spacing: 0.05em;
+      margin-bottom: 8px;
     }
 
-    /* FOOTER */
+    .spec-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* === FOOTER === */
     footer {
       position: relative;
       z-index: 1;
-      text-align: center;
-      padding: 40px 24px;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-      color: var(--muted);
-      font-size: 0.8rem;
-      font-family: 'JetBrains Mono', monospace;
+      border-top: 1px solid var(--border);
+      padding: 32px clamp(20px, 5vw, 80px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
     }
 
-    @keyframes fadeDown {
+    footer p {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    @keyframes fadeUp {
       from {
         opacity: 0;
-        transform: translateY(-20px);
+        transform: translateY(24px);
       }
 
       to {
@@ -640,280 +404,110 @@
       }
     }
 
-    /* STATUS BAR */
-    .status-bar {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 28px;
-      flex-wrap: wrap;
-      margin-top: 48px;
-      padding: 16px 28px;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 10px;
-      max-width: 600px;
-      margin: 48px auto 0;
-      animation: fadeDown 1s 0.5s ease both;
-    }
-
-    .status-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      color: var(--muted);
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-    }
-
-    .status-dot.green {
-      background: #22c55e;
-      box-shadow: 0 0 8px #22c55e;
-      animation: pulse 2s infinite;
-    }
-
-    .status-dot.yellow {
-      background: #eab308;
-      box-shadow: 0 0 8px #eab308;
-      animation: pulse 2s infinite;
-    }
-
-    .status-dot.red {
-      background: var(--accent2);
-      box-shadow: 0 0 8px var(--accent2);
-      animation: pulse 2s infinite;
-    }
-
-    /* Hamburger toggle - hidden on desktop */
-    .nav-toggle {
-      display: none;
-      font-size: 1.8rem;
-      cursor: pointer;
-      color: var(--accent);
-    }
-
-    /* Mobile responsive */
-    @media (max-width: 768px) {
+    @media (max-width: 600px) {
       .nav-links {
-        position: fixed;
-        top: 70px;
-        right: -100%;
-        flex-direction: column;
-        background: rgba(5, 8, 16, 0.95);
-        width: 200px;
-        height: calc(100% - 70px);
-        padding: 24px;
-        gap: 24px;
-        transition: right 0.3s ease;
-        z-index: 99;
+        display: none;
       }
 
-      .nav-links a {
-        font-size: 1rem;
-      }
-
-      .nav-links.active {
-        right: 0;
-      }
-
-      .nav-toggle {
-        display: block;
+      .cards {
+        grid-template-columns: 1fr;
       }
     }
   </style>
 </head>
 
 <body>
-  <div class="grid-bg"></div>
+  <div class="bg-mesh"></div>
+  <div class="bg-grid"></div>
 
   <nav>
-    <div class="nav-logo">SMARTNODE</div>
-
-    <div class="nav-toggle" id="navToggle">&#9776;</div>
-
-    <div class="nav-links" id="navLinks">
-      <a href="#dashboards">Dashboards</a>
-      <a href="#hardware">Hardware</a>
-      <a href="#specs">Specs</a>
+    <div class="nav-logo">Smart<span>IoT</span></div>
+    <div class="nav-links">
+      <a href="#systems">Systems</a>
+      <a href="#specs">Hardware</a>
     </div>
   </nav>
 
-  <div class="nav-overlay" id="navOverlay"></div>
-
-  <!-- HERO -->
   <section class="hero">
-    <div class="orb orb1"></div>
-    <div class="orb orb2"></div>
+    <div class="hero-badge">ESP32 · Supabase · Real-Time</div>
+    <h1>
+      <span class="line-tl">Smart Traffic</span><br>
+      <span class="line-th">& Environment</span><br>
+      Monitor
+    </h1>
+    <p>A real-time IoT dashboard system for intelligent traffic light control and baby-safe environment monitoring —
+      powered by ESP32 and Supabase.</p>
 
-    <div class="hero-badge">ESP32 · SUPABASE · REALTIME</div>
-
-    <h1>SMART<span>NODE</span><br /><em>CONTROL</em> CENTER</h1>
-    <p class="hero-sub">
-      IoT-powered monitoring system for traffic control and baby-safe environment sensing — built with ESP32 and
-      real-time Supabase sync.
-    </p>
-
-    <div class="hero-cta">
-      <a href="traffic.html" class="btn btn-primary">Traffic Dashboard</a>
-      <a href="temphum.html" class="btn btn-secondary">Temp &amp; Humidity</a>
-    </div>
-
-    <div class="status-bar">
-      <div class="status-item">
-        <span class="status-dot green"></span> Supabase Connected
-      </div>
-      <div class="status-item">
-        <span class="status-dot green"></span> WiFi Online
-      </div>
-      <div class="status-item">
-        <span class="status-dot yellow"></span> ESP32 Standby
-      </div>
-    </div>
-  </section>
-
-  <!-- DASHBOARDS -->
-  <section class="section" id="dashboards">
-    <div style="text-align:center; max-width:900px; margin:0 auto;">
-      <div class="section-label">// MODULES</div>
-      <div class="section-title">Choose Dashboard</div>
-
-      <div class="dashboards">
-        <a href="traffic.html" class="dash-card traffic">
-          <div class="dash-card-inner">
-            <div class="dash-number">01</div>
-            <div class="dash-label">// traffic_control</div>
-            <div class="dash-title">Traffic Light System</div>
-            <div class="dash-desc">Real-time LED control, countdown timer, manual overrides, and complete traffic event
-              logging with Supabase sync.</div>
-            <div class="dash-arrow">Launch Module →</div>
-          </div>
-        </a>
-
-        <a href="temphum.html" class="dash-card temp">
-          <div class="dash-card-inner">
-            <div class="dash-number">02</div>
-            <div class="dash-label">// environment_monitor</div>
-            <div class="dash-title">Temp &amp; Humidity Monitor</div>
-            <div class="dash-desc">Baby-safe environment tracking with DHT11, live charts, condition alerts, tips, and
-              CSV data export.</div>
-            <div class="dash-arrow">Launch Module →</div>
-          </div>
-        </a>
-      </div>
+    <div class="cards" id="systems">
+      <a class="card card-tl" href="traffic.html">
+        <div class="card-icon">🚦</div>
+        <h2>Traffic Light Control</h2>
+        <p>Real-time countdown management with LED control, buzzer alerts, and full activity history logs.</p>
+        <div class="card-cta">
+          Open Dashboard
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+              stroke-linejoin="round" />
+          </svg>
+        </div>
+      </a>
+      <a class="card card-th" href="temperature.html">
+        <div class="card-icon">🌡️</div>
+        <h2>Temp & Humidity Monitor</h2>
+        <p>Baby-safe environment tracking with alerts, real-time charts, recommendations, and CSV export.</p>
+        <div class="card-cta">
+          Open Dashboard
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+              stroke-linejoin="round" />
+          </svg>
+        </div>
+      </a>
     </div>
   </section>
 
-  <!-- HARDWARE -->
-  <section class="section" id="hardware" style="background: rgba(255,255,255,0.01);">
-    <div style="text-align:center; max-width:1100px; margin:0 auto;">
-      <div class="section-label">// hardware_specs</div>
-      <div class="section-title">Connected Devices</div>
-      <div class="cards">
-        <div class="card">
-          <div class="card-icon tl">🚦</div>
-          <div class="card-tag">// traffic_module</div>
-          <h3>Traffic Light Unit</h3>
-          <p>ESP32 microcontroller with RGB LED array and passive buzzer. Pin 13 (Green), Pin 14 (Yellow), Pin 26 (Red),
-            Pin 32 (Buzzer).</p>
-          <div class="card-footer">
-            <span class="chip live">LIVE</span>
-            <span class="chip">ESP32</span>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-icon th">🌡️</div>
-          <div class="card-tag">// env_module</div>
-          <h3>DHT11 Sensor Unit</h3>
-          <p>Temperature and humidity sensor on Pin 15 with RGB LED indicators and buzzer alerts for baby environment
-            monitoring.</p>
-          <div class="card-footer">
-            <span class="chip live">LIVE</span>
-            <span class="chip">DHT11</span>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-icon" style="background:rgba(255,62,108,0.1); border:1px solid rgba(255,62,108,0.3);">☁️
-          </div>
-          <div class="card-tag">// cloud_sync</div>
-          <h3>Supabase Backend</h3>
-          <p>Real-time PostgreSQL database for command delivery, sensor data storage, event logging, and cross-device
-            state sync.</p>
-          <div class="card-footer">
-            <span class="chip live">LIVE</span>
-            <span class="chip">Realtime</span>
-          </div>
-        </div>
+  <section class="specs" id="specs">
+    <div class="section-label">Hardware Configuration</div>
+    <div class="specs-grid">
+      <div class="spec-item">
+        <div class="spec-label">Microcontroller</div>
+        <div class="spec-value">ESP32 Dev Module</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Traffic — Red LED</div>
+        <div class="spec-value">GPIO Pin 26</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Traffic — Yellow LED</div>
+        <div class="spec-value">GPIO Pin 14</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Traffic — Green LED</div>
+        <div class="spec-value">GPIO Pin 13</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Passive Buzzer</div>
+        <div class="spec-value">GPIO Pin 32</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">DHT11 Sensor</div>
+        <div class="spec-value">GPIO Pin 15</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Database</div>
+        <div class="spec-value">Supabase (PostgreSQL)</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Update Interval</div>
+        <div class="spec-value">5 seconds</div>
       </div>
     </div>
   </section>
-
-  <!-- SPECS 
-  <section class="section" id="specs">
-    <div style="text-align:center; max-width:900px; margin:0 auto;">
-      <div class="section-label">// system_metrics</div>
-      <div class="section-title">System Specs</div>
-      <div class="specs-grid">
-        <div class="spec-item">
-          <div class="spec-val">5s</div>
-          <div class="spec-key">Sensor poll interval</div>
-        </div>
-        <div class="spec-item">
-          <div class="spec-val">30s</div>
-          <div class="spec-key">Red light duration</div>
-        </div>
-        <div class="spec-item">
-          <div class="spec-val">10s</div>
-          <div class="spec-key">Yellow light duration</div>
-        </div>
-        <div class="spec-item">
-          <div class="spec-val">2</div>
-          <div class="spec-key">ESP32 units</div>
-        </div>
-      </div>
-    </div>
-  </section>
-  -->
 
   <footer>
-    &copy; 2025 SmartNode Control Center &nbsp;·&nbsp; ESP32 + Supabase + DHT11 &nbsp;·&nbsp; Built for real-time IoT
+    <p>SmartIoT Dashboard System — ESP32 + Supabase</p>
+    <p style="color: var(--muted); font-size:0.75rem;">Traffic Light &amp; Baby Environment Monitor</p>
   </footer>
 </body>
-
-<script>
-  const navToggle = document.getElementById('navToggle');
-  const navLinks = document.getElementById('navLinks');
-  const navOverlay = document.getElementById('navOverlay');
-
-  function openMenu() {
-    navLinks.classList.add('active');
-    navOverlay.classList.add('active');
-  }
-
-  function closeMenu() {
-    navLinks.classList.remove('active');
-    navOverlay.classList.remove('active');
-  }
-
-  navToggle.addEventListener('click', () => {
-    if (navLinks.classList.contains('active')) {
-      closeMenu();
-    } else {
-      openMenu();
-    }
-  });
-
-  navOverlay.addEventListener('click', closeMenu);
-
-  // Optional: close menu when clicking a link
-  navLinks.querySelectorAll('a').forEach(link => {
-    link.addEventListener('click', closeMenu);
-  });
-</script>
 
 </html>
